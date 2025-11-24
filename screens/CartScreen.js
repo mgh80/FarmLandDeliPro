@@ -1,4 +1,3 @@
-import { Feather as Icon } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -10,6 +9,7 @@ import {
   View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
+import * as Icon from "react-native-feather";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../constants/supabase"; // ✅ tu cliente Supabase
 import { useCart } from "../context/CartContext";

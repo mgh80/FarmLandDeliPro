@@ -1,4 +1,3 @@
-import { Feather as Icon } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useEffect, useState } from "react";
@@ -11,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as Icon from "react-native-feather";
 import { supabase } from "../constants/supabase";
 import { useCart } from "../context/CartContext";
 import { themeColors } from "../theme";

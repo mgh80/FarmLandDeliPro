@@ -12,8 +12,6 @@
         "projectId": "3aa11ad6-6b06-470f-af46-7ccbb95a0313"
       }
     },
-    "plugins": [
-      "expo-web-browser"
-    ]
+    "plugins": ["expo-web-browser"]
   }
 }

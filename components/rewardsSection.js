@@ -1,16 +1,15 @@
 // RewardsSection.js - Componente actualizado
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  View,
-  Text,
   FlatList,
   Image,
   StyleSheet,
+  Text,
   TouchableOpacity,
-  Modal,
+  View,
 } from "react-native";
-import { supabase } from "../constants/supabase";
 import * as Icon from "react-native-feather";
+import { supabase } from "../constants/supabase";
 import CouponModal from "./CouponModal";
 
 const rewards = [
@@ -334,7 +333,6 @@ const styles = StyleSheet.create({
 
 export default RewardsSection;
 
-// import React, { useEffect, useState } from "react";
 // import { View, Text, FlatList, Image, StyleSheet } from "react-native";
 // import { supabase } from "../constants/supabase";
 // import * as Icon from "react-native-feather";
