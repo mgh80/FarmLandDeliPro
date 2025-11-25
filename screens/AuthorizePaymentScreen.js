@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  View,
-  Text,
   ActivityIndicator,
-  Platform,
-  TouchableOpacity,
-  StyleSheet,
   Linking,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 import { WebView } from "react-native-webview";
 import { useCart } from "../context/CartContext";
-import Toast from "react-native-toast-message";
 
 const getBackendUrl = () => {
   if (Platform.OS === "web") {
@@ -201,7 +201,7 @@ export default function AuthorizePaymentScreen({ route, navigation }) {
             });
           } else {
             Toast.show({
-              type: "warning",
+              type: "info",
               text1: "Pago pendiente",
               text2: "Tu pago está siendo procesado",
               position: "top",
