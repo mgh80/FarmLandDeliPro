@@ -1,24 +1,24 @@
-import React, { useState, useEffect } from "react";
+import { useNavigation } from "@react-navigation/native";
+import { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
   Modal,
   Pressable,
   ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
   TouchableWithoutFeedback,
+  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import * as Icon from "react-native-feather";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Carousel from "../components/carousel";
 import Categories from "../components/categories";
 import FeaturedRow from "../components/featuredRow";
-import Carousel from "../components/carousel";
-import { useNavigation } from "@react-navigation/native";
-import { supabase } from "../constants/supabase";
-import { useProducts, useCategories } from "../constants";
-import { useCart } from "../context/CartContext";
 import RewardsSection from "../components/rewardsSection";
+import { useCategories, useProducts } from "../constants";
+import { supabase } from "../constants/supabase";
+import { useCart } from "../context/CartContext";
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -256,114 +256,150 @@ export default function HomeScreen() {
       {/* Sidebar */}
       <Modal
         visible={showSidebar}
-        animationType="slide"
-        transparent={true}
+        transparent
+        animationType="fade"
         onRequestClose={() => setShowSidebar(false)}
       >
-        <TouchableWithoutFeedback onPress={() => setShowSidebar(false)}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            flexDirection: "row",
+          }}
+        >
+          {/* Zona clickeable para cerrar */}
+          <TouchableWithoutFeedback onPress={() => setShowSidebar(false)}>
+            <View style={{ flex: 1 }} />
+          </TouchableWithoutFeedback>
+
+          {/* PANEL */}
           <View
             style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "flex-end",
-              flexDirection: "row",
+              width: "78%",
+              height: "100%",
+              backgroundColor: "white",
+              paddingTop: 40,
+              paddingHorizontal: 20,
+              borderTopLeftRadius: 16,
+              borderBottomLeftRadius: 16,
+
+              // sombreado moderno
+              shadowColor: "#000",
+              shadowOpacity: 0.25,
+              shadowOffset: { width: -2, height: 0 },
+              shadowRadius: 10,
+              elevation: 8,
             }}
           >
-            <SafeAreaView
+            {/* Header */}
+            <Text style={{ fontSize: 26, fontWeight: "bold", marginBottom: 4 }}>
+              Profile
+            </Text>
+            <Text
               style={{
-                backgroundColor: "white",
-                width: "70%",
-                height: "100%",
-                padding: 20,
+                fontSize: 18,
+                fontWeight: "600",
+                color: "#4a90e2",
+                marginBottom: 24,
               }}
             >
-              <Text style={{ fontSize: 22, fontWeight: "bold" }}>Perfil</Text>
+              {userName}
+            </Text>
+
+            {/* Opciones */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowSidebar(false);
+                navigation.navigate("OrderHistory");
+              }}
+            >
+              <Icon.FileText width={22} height={22} stroke="#1F2937" />
+              <Text style={styles.menuText}>Order History</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowSidebar(false);
+                navigation.navigate("Points");
+              }}
+            >
+              <Icon.Star width={22} height={22} stroke="#1F2937" />
+              <Text style={styles.menuText}>My Points</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowSidebar(false);
+                navigation.navigate("CouponHistory");
+              }}
+            >
+              <Icon.Gift width={22} height={22} stroke="#1F2937" />
+              <Text style={styles.menuText}>My Coupons</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowSidebar(false);
+                navigation.navigate("Terms");
+              }}
+            >
+              <Icon.FileText width={22} height={22} stroke="#1F2937" />
+              <Text style={styles.menuText}>Terms of use</Text>
+            </TouchableOpacity>
+
+            {/* Logout */}
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={{
+                marginTop: 40,
+                backgroundColor: "#ff6347",
+                paddingVertical: 12,
+                borderRadius: 10,
+              }}
+            >
               <Text
-                style={{ fontSize: 16, color: "#4a90e2", marginBottom: 30 }}
-              >
-                {userName}
-              </Text>
-
-              <TouchableOpacity
-                onPress={() => {
-                  setShowSidebar(false);
-                  navigation.navigate("OrderHistory");
-                }}
-                style={{ paddingVertical: 10 }}
-              >
-                <Text style={{ fontSize: 16, color: "#1F2937" }}>
-                  🧾 Order History
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => {
-                  setShowSidebar(false);
-                  navigation.navigate("Points");
-                }}
-                style={{ paddingVertical: 10 }}
-              >
-                <Text style={{ fontSize: 16, color: "#1F2937" }}>
-                  ⭐ My Points
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => {
-                  setShowSidebar(false);
-                  navigation.navigate("CouponHistory");
-                }}
-                style={{ paddingVertical: 10 }}
-              >
-                <Text style={{ fontSize: 16, color: "#1F2937" }}>
-                  🎟️ My Coupons
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => {
-                  setShowSidebar(false);
-                  navigation.navigate("Terms");
-                }}
-                style={{ paddingVertical: 10 }}
-              >
-                <Text style={{ fontSize: 16, color: "#1F2937" }}>
-                  📜 Terms of use
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleLogout}
                 style={{
-                  marginTop: "auto",
-                  backgroundColor: "#ff6347",
-                  padding: 12,
-                  borderRadius: 8,
+                  color: "white",
+                  fontWeight: "bold",
+                  textAlign: "center",
                 }}
               >
-                <Text
-                  style={{
-                    color: "white",
-                    textAlign: "center",
-                    fontWeight: "bold",
-                  }}
-                >
-                  Logout
-                </Text>
-              </TouchableOpacity>
+                Logout
+              </Text>
+            </TouchableOpacity>
 
-              <Pressable
-                onPress={() => setShowSidebar(false)}
-                style={{ marginTop: 15 }}
+            {/* Cerrar */}
+            <TouchableOpacity
+              onPress={() => setShowSidebar(false)}
+              style={{ marginTop: 20 }}
+            >
+              <Text
+                style={{ color: "gray", textAlign: "center", fontSize: 15 }}
               >
-                <Text style={{ color: "gray", textAlign: "center" }}>
-                  Close
-                </Text>
-              </Pressable>
-            </SafeAreaView>
+                Close
+              </Text>
+            </TouchableOpacity>
           </View>
-        </TouchableWithoutFeedback>
+        </View>
       </Modal>
     </SafeAreaView>
   );
 }
+
+const styles = {
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+  },
+  menuText: {
+    fontSize: 17,
+    marginLeft: 12,
+    fontWeight: "500",
+    color: "#1F2937",
+  },
+};

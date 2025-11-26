@@ -14,10 +14,12 @@ import { supabase } from "../constants/supabase";
 export default function MyPointsScreen() {
   const [points, setPoints] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState(null);
   const navigation = useNavigation();
 
   const fetchPoints = async () => {
     setLoading(true);
+
     const {
       data: { user },
       error: userError,
@@ -25,7 +27,7 @@ export default function MyPointsScreen() {
 
     if (userError || !user) {
       console.error("Error al obtener usuario:", userError);
-      setPoints(null);
+      setErrorMsg("Unable to load points.");
       setLoading(false);
       return;
     }
@@ -37,8 +39,8 @@ export default function MyPointsScreen() {
       .single();
 
     if (error) {
-      console.error("Error al obtener puntos:", error.message);
-      setPoints(null);
+      console.error("Error Supabase:", error.message);
+      setErrorMsg("Unable to retrieve your points.");
     } else {
       setPoints(data?.points || 0);
     }
@@ -52,26 +54,29 @@ export default function MyPointsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Botón Volver */}
+      {/* 🔙 Back Button */}
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={styles.backButton}
       >
-        <Icon.ChevronLeft width={24} height={24} color="#000" />
+        <Icon name="chevron-left" size={26} color="#000" />
         <Text style={styles.backText}>Back</Text>
       </TouchableOpacity>
 
+      {/* ⭐ Points Card */}
       <View style={styles.card}>
         <Text style={styles.title}>🎯 My Points</Text>
 
         {loading ? (
           <ActivityIndicator size="large" color="#FFA500" />
+        ) : errorMsg ? (
+          <Text style={styles.errorText}>{errorMsg}</Text>
         ) : (
           <Text style={styles.points}>{points} pts</Text>
         )}
 
         <Text style={styles.infoText}>
-          ¡Collect points for each purchase and redeem them for exclusive
+          Collect points with every purchase and redeem them for exclusive
           rewards!
         </Text>
       </View>
@@ -88,40 +93,53 @@ const styles = StyleSheet.create({
   backButton: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 10,
   },
   backText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "600",
     marginLeft: 6,
+    color: "#333",
   },
   card: {
     backgroundColor: "#fff",
     borderRadius: 20,
-    padding: 30,
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+    marginTop: 10,
     alignItems: "center",
+
+    // Shadow
     elevation: 5,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 10,
+    marginBottom: 15,
     color: "#FF6B00",
   },
   points: {
-    fontSize: 48,
+    fontSize: 54,
     fontWeight: "bold",
-    color: "#333",
-    marginBottom: 8,
+    color: "#111",
+    marginBottom: 10,
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#EF4444",
+    marginBottom: 10,
   },
   infoText: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#666",
     textAlign: "center",
-    marginTop: 10,
+    marginTop: 12,
+    maxWidth: "85%",
+    lineHeight: 20,
   },
 });

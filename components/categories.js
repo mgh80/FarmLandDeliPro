@@ -1,6 +1,20 @@
-import React from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
+import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useCategories } from "../constants";
+
+// 👉 Array simple con tus imágenes en orden
+const categoryImages = [
+  require("../assets/images/2.jpg"),
+  require("../assets/images/3.jpg"),
+  require("../assets/images/4.jpg"),
+  require("../assets/images/5.jpg"),
+  require("../assets/images/6.jpg"),
+  require("../assets/images/7.jpg"),
+  require("../assets/images/8.jpg"),
+  require("../assets/images/9.jpg"),
+  require("../assets/images/10.jpg"),
+  require("../assets/images/11.jpg"),
+  require("../assets/images/12.jpg"),
+];
 
 export default function Categories({ activeCategory, setActiveCategory }) {
   const categories = useCategories();
@@ -12,7 +26,7 @@ export default function Categories({ activeCategory, setActiveCategory }) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 15, gap: 15 }}
       >
-        {/* Botón All */}
+        {/* ALL */}
         <TouchableOpacity
           onPress={() => setActiveCategory(null)}
           style={{ alignItems: "center", marginRight: 16 }}
@@ -25,7 +39,7 @@ export default function Categories({ activeCategory, setActiveCategory }) {
             }}
           >
             <Image
-              source={require("../assets/images/1.jpg")}
+              source={require("../assets/images/1.jpg")} // Imagen de ALL
               style={{ width: 50, height: 50, borderRadius: 25 }}
             />
           </View>
@@ -41,9 +55,10 @@ export default function Categories({ activeCategory, setActiveCategory }) {
           </Text>
         </TouchableOpacity>
 
-        {/* Botones por categoría */}
-        {categories.map((cat) => {
+        {/* CATEGORÍAS */}
+        {categories.map((cat, index) => {
           const isActive = cat.Name === activeCategory;
+
           return (
             <TouchableOpacity
               key={cat.Id}
@@ -58,10 +73,11 @@ export default function Categories({ activeCategory, setActiveCategory }) {
                 }}
               >
                 <Image
-                  source={require("../assets/images/1.jpg")}
+                  source={categoryImages[index]} // 👈 IMAGEN SEGÚN ÍNDICE
                   style={{ width: 50, height: 50, borderRadius: 25 }}
                 />
               </View>
+
               <Text
                 style={{
                   fontSize: 12,
