@@ -1,22 +1,37 @@
 {
   "expo": {
-    "name": "farmlanddeliapp",
+    "name": "Farmland Deli",
     "slug": "farmlanddeliapp",
     "version": "1.0.0",
     "scheme": "farmlanddeli",
     "icon": "./assets/icon.png",
+
     "android": {
-      "package": "com.farmlanddeli.farmlandeliapp",
+      "package": "com.farmlanddeli.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": ["BROWSABLE", "DEFAULT"],
+          "data": [
+            {
+              "scheme": "farmlanddeli",
+              "host": "auth"
+            }
+          ]
+        }
+      ]
     },
+
     "extra": {
       "eas": {
         "projectId": "3aa11ad6-6b06-470f-af46-7ccbb95a0313"
       }
     },
+
     "plugins": ["expo-web-browser"]
   }
 }
