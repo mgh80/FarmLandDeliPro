@@ -7,7 +7,8 @@
     "icon": "./assets/icon.png",
 
     "android": {
-      "package": "com.farmlanddeli.app",
+      "package": "com.farmlanddeli.mobile",
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFFFFF"
