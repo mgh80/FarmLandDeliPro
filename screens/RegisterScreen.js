@@ -1,19 +1,25 @@
-import React, { useState } from "react";
+import { useNavigation } from "@react-navigation/native";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
   ActivityIndicator,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableWithoutFeedback,
+  View,
 } from "react-native";
 import Toast from "react-native-toast-message";
-import { useNavigation } from "@react-navigation/native";
 import { supabase } from "../constants/supabase";
 
 const RegisterScreen = () => {
   const navigation = useNavigation();
+
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -25,137 +31,154 @@ const RegisterScreen = () => {
       Toast.show({
         type: "error",
         text1: "Incomplete fields",
-        text2: "Complete all required fields",
+        text2: "Please complete all required fields",
       });
       return;
     }
 
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      setLoading(false);
-      Toast.show({
-        type: "error",
-        text1: "Failed registration",
-        text2: error.message,
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
       });
-      return;
-    }
 
-    const userId = data?.user?.id;
+      if (error) throw error;
 
-    if (!userId) {
-      setLoading(false);
-      Toast.show({
-        type: "error",
-        text1: "User ID not obtained",
+      const userId = data?.user?.id;
+      if (!userId) throw new Error("User ID not obtained");
+
+      const { error: upsertError } = await supabase.from("Users").upsert({
+        id: userId,
+        email,
+        name,
+        phone,
+        points: 0,
+        dateCreated: new Date().toISOString(),
       });
-      return;
-    }
 
-    const { error: upsertError } = await supabase.from("Users").upsert({
-      id: userId,
-      email,
-      name,
-      phone,
-      points: 0,
-      dateCreated: new Date().toISOString(),
-    });
+      if (upsertError) throw upsertError;
 
-    if (upsertError) {
-      console.error("🛑 Error saving to Users table:", upsertError);
-
-      Toast.show({
-        type: "error",
-        text1: "Error saving to Users table",
-        text2: upsertError.message,
-      });
-    } else {
       Toast.show({
         type: "success",
-        text1: "User successfully registered",
-        text2: "Verify your email before logging in",
+        text1: "Account created",
+        text2: "Please verify your email before logging in",
       });
 
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "Home" }],
+      navigation.replace("Login");
+    } catch (err) {
+      Toast.show({
+        type: "error",
+        text1: "Registration failed",
+        text2: err.message,
       });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
-    <View style={styles.container}>
-      <Image
-        source={require("../assets/images/splash.png")}
-        style={styles.logo}
-      />
-      <Text style={styles.title}>Create Account</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.container}>
+            <Image
+              source={require("../assets/images/splash.png")}
+              style={styles.logo}
+            />
 
-      <TextInput
-        placeholder="Full Name"
-        style={styles.input}
-        value={name}
-        onChangeText={setName}
-      />
-      <TextInput
-        placeholder="Phone"
-        style={styles.input}
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-      />
-      <TextInput
-        placeholder="Email"
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-      />
-      <TextInput
-        placeholder="Password"
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+            <Text style={styles.title}>Create Account</Text>
 
-      <Pressable style={styles.button} onPress={handleRegister}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Create</Text>
-        )}
-      </Pressable>
+            <TextInput
+              placeholder="Full Name"
+              placeholderTextColor="#999"
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+            />
 
-      <Text style={styles.loginText}>
-        Do you have account?{" "}
-        <Text style={styles.loginLink} onPress={() => navigation.goBack()}>
-          Login
-        </Text>
-      </Text>
-    </View>
+            <TextInput
+              placeholder="Phone"
+              placeholderTextColor="#999"
+              style={styles.input}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
+
+            <TextInput
+              placeholder="Email"
+              placeholderTextColor="#999"
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+
+            <TextInput
+              placeholder="Password"
+              placeholderTextColor="#999"
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+
+            <Pressable
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleRegister}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Create Account</Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              style={{ marginTop: 15 }}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.loginLink}>
+                Already have an account? Login
+              </Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
+/* ===============================
+   STYLES
+=============================== */
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: "center",
+  },
+  container: {
     alignItems: "center",
     backgroundColor: "#f7f7f7",
     padding: 20,
   },
-  logo: { width: 100, height: 100, marginBottom: 20 },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
+  },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "bold",
     marginBottom: 20,
     color: "#333",
@@ -169,6 +192,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginBottom: 15,
     backgroundColor: "#fff",
+    color: "#000", // 🔥 CLAVE para que se vea el texto
   },
   button: {
     width: "90%",
@@ -179,9 +203,18 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginTop: 10,
   },
-  buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
-  loginText: { marginTop: 15, color: "#666" },
-  loginLink: { color: "#ff6347", fontWeight: "bold" },
+  buttonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  loginLink: {
+    color: "#ff6347",
+    fontWeight: "bold",
+  },
 });
 
 export default RegisterScreen;
