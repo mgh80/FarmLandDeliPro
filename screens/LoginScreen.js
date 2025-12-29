@@ -162,6 +162,21 @@ const LoginScreen = () => {
   };
 
   /* ===============================
+     CONTINUE AS GUEST
+  =============================== */
+  const handleContinueAsGuest = () => {
+    Toast.show({
+      type: "info",
+      text1: "Welcome, Guest! 👋",
+      text2: "You'll need to log in to place orders",
+      visibilityTime: 3000,
+      topOffset: 60,
+    });
+
+    setTimeout(() => navigation.replace("Home"), 800);
+  };
+
+  /* ===============================
      MOSTRAR LOADING MIENTRAS VERIFICA SESIÓN
   =============================== */
   if (isCheckingSession) {
@@ -252,8 +267,23 @@ const LoginScreen = () => {
               disabled={isLoading}
             >
               <Text style={[styles.link, isLoading && styles.linkDisabled]}>
-                Dont have an account? Sign up
+                Don't have an account? Sign up
               </Text>
+            </Pressable>
+
+            {/* NUEVA OPCIÓN: Continue as Guest */}
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.divider} />
+            </View>
+
+            <Pressable
+              style={[styles.guestButton, isLoading && styles.buttonDisabled]}
+              onPress={handleContinueAsGuest}
+              disabled={isLoading}
+            >
+              <Text style={styles.guestButtonText}>Continue as Guest</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -343,6 +373,37 @@ const styles = StyleSheet.create({
   },
   linkDisabled: {
     color: "#ccc",
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "90%",
+    marginVertical: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#ddd",
+  },
+  dividerText: {
+    marginHorizontal: 10,
+    color: "#999",
+    fontWeight: "bold",
+  },
+  guestButton: {
+    width: "90%",
+    height: 50,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#ff6347",
+  },
+  guestButtonText: {
+    color: "#ff6347",
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });
 

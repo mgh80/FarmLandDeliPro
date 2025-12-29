@@ -1,6 +1,7 @@
 import { useNavigation } from "@react-navigation/native";
 import { useEffect, useState } from "react";
 import {
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -12,6 +13,7 @@ import {
 } from "react-native";
 import * as Icon from "react-native-feather";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 import Carousel from "../components/carousel";
 import Categories from "../components/categories";
 import FeaturedRow from "../components/featuredRow";
@@ -22,20 +24,128 @@ import { useCart } from "../context/CartContext";
 
 export default function HomeScreen() {
   const navigation = useNavigation();
-  const { getTotalItems } = useCart();
+  const { getTotalItems, clearCart } = useCart();
 
   const [showSidebar, setShowSidebar] = useState(false);
   const [pressedIcon, setPressedIcon] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
   const [searchText, setSearchText] = useState("");
   const [userName, setUserName] = useState("");
+  const [isGuest, setIsGuest] = useState(false);
 
   const products = useProducts();
   const categories = useCategories();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    clearCart(); // Limpiar carrito al hacer logout
     navigation.replace("Login");
+  };
+
+  /* ===============================
+     DELETE ACCOUNT
+  =============================== */
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: confirmDeleteAccount,
+        },
+      ]
+    );
+  };
+
+  const confirmDeleteAccount = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "No user found",
+          visibilityTime: 3000,
+          topOffset: 60,
+        });
+        return;
+      }
+
+      // OPCIÓN: Soft Delete - Marcar como eliminado sin borrar
+      // Primero verifica si la columna "deleted" existe
+      const { error: updateError } = await supabase
+        .from("Users")
+        .update({ 
+          deleted: true, 
+          deleted_at: new Date().toISOString() 
+        })
+        .eq("id", user.id);
+
+      if (updateError) {
+        console.error("Error marking user as deleted:", updateError);
+        
+        // Si la columna no existe, intentar eliminar directamente
+        const { error: deleteError } = await supabase
+          .from("Users")
+          .delete()
+          .eq("id", user.id);
+
+        if (deleteError) {
+          console.error("Error deleting user:", deleteError);
+          
+          if (deleteError.code === "23503") {
+            Toast.show({
+              type: "error",
+              text1: "Cannot Delete Account",
+              text2: "You have existing orders. Please contact support.",
+              visibilityTime: 4000,
+              topOffset: 60,
+            });
+          } else {
+            Toast.show({
+              type: "error",
+              text1: "Error",
+              text2: "Failed to delete account",
+              visibilityTime: 3000,
+              topOffset: 60,
+            });
+          }
+          return;
+        }
+      }
+
+      // Cerrar sesión después de eliminar/marcar como eliminado
+      await supabase.auth.signOut();
+      clearCart(); // Limpiar carrito
+
+      Toast.show({
+        type: "success",
+        text1: "Account Deleted",
+        text2: "Your account has been deactivated",
+        visibilityTime: 3000,
+        topOffset: 60,
+      });
+
+      setTimeout(() => navigation.replace("Login"), 1000);
+    } catch (error) {
+      console.error("Unexpected error deleting account:", error);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Something went wrong",
+        visibilityTime: 3000,
+        topOffset: 60,
+      });
+    }
   };
 
   useEffect(() => {
@@ -45,6 +155,7 @@ export default function HomeScreen() {
       } = await supabase.auth.getUser();
 
       if (user) {
+        setIsGuest(false);
         const { data } = await supabase
           .from("Users")
           .select("name")
@@ -52,6 +163,9 @@ export default function HomeScreen() {
           .single();
 
         if (data) setUserName(data.name);
+      } else {
+        setIsGuest(true);
+        setUserName("Guest");
       }
     };
 
@@ -78,7 +192,7 @@ export default function HomeScreen() {
             marginLeft: 8,
           }}
         >
-          ¡Hello! {userName}
+          Hello! {userName}
         </Text>
       </View>
 
@@ -306,39 +420,43 @@ export default function HomeScreen() {
               {userName}
             </Text>
 
-            {/* Opciones */}
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowSidebar(false);
-                navigation.navigate("OrderHistory");
-              }}
-            >
-              <Icon.FileText width={22} height={22} stroke="#1F2937" />
-              <Text style={styles.menuText}>Order History</Text>
-            </TouchableOpacity>
+            {/* Opciones - Solo mostrar si NO es invitado */}
+            {!isGuest && (
+              <>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setShowSidebar(false);
+                    navigation.navigate("OrderHistory");
+                  }}
+                >
+                  <Icon.FileText width={22} height={22} stroke="#1F2937" />
+                  <Text style={styles.menuText}>Order History</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowSidebar(false);
-                navigation.navigate("Points");
-              }}
-            >
-              <Icon.Star width={22} height={22} stroke="#1F2937" />
-              <Text style={styles.menuText}>My Points</Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setShowSidebar(false);
+                    navigation.navigate("Points");
+                  }}
+                >
+                  <Icon.Star width={22} height={22} stroke="#1F2937" />
+                  <Text style={styles.menuText}>My Points</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setShowSidebar(false);
-                navigation.navigate("CouponHistory");
-              }}
-            >
-              <Icon.Gift width={22} height={22} stroke="#1F2937" />
-              <Text style={styles.menuText}>My Coupons</Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setShowSidebar(false);
+                    navigation.navigate("CouponHistory");
+                  }}
+                >
+                  <Icon.Gift width={22} height={22} stroke="#1F2937" />
+                  <Text style={styles.menuText}>My Coupons</Text>
+                </TouchableOpacity>
+              </>
+            )}
 
             <TouchableOpacity
               style={styles.menuItem}
@@ -351,26 +469,67 @@ export default function HomeScreen() {
               <Text style={styles.menuText}>Terms of use</Text>
             </TouchableOpacity>
 
-            {/* Logout */}
-            <TouchableOpacity
-              onPress={handleLogout}
-              style={{
-                marginTop: 40,
-                backgroundColor: "#ff6347",
-                paddingVertical: 12,
-                borderRadius: 10,
-              }}
-            >
-              <Text
-                style={{
-                  color: "white",
-                  fontWeight: "bold",
-                  textAlign: "center",
+            {/* Delete Account - Solo si NO es invitado */}
+            {!isGuest && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setShowSidebar(false);
+                  handleDeleteAccount();
                 }}
               >
-                Logout
-              </Text>
-            </TouchableOpacity>
+                <Icon.Trash2 width={22} height={22} stroke="#dc2626" />
+                <Text style={[styles.menuText, { color: "#dc2626" }]}>
+                  Delete Account
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Logout o Login */}
+            {isGuest ? (
+              <TouchableOpacity
+                onPress={() => {
+                  setShowSidebar(false);
+                  navigation.navigate("Login");
+                }}
+                style={{
+                  marginTop: 40,
+                  backgroundColor: "#4a90e2",
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                }}
+              >
+                <Text
+                  style={{
+                    color: "white",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                  }}
+                >
+                  Login
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={handleLogout}
+                style={{
+                  marginTop: 40,
+                  backgroundColor: "#ff6347",
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                }}
+              >
+                <Text
+                  style={{
+                    color: "white",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                  }}
+                >
+                  Logout
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {/* Cerrar */}
             <TouchableOpacity

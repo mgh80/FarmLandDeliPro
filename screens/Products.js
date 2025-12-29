@@ -2,6 +2,7 @@ import { Picker } from "@react-native-picker/picker";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useEffect, useState } from "react";
 import {
+  Alert,
   Image,
   Modal,
   Pressable,
@@ -138,8 +139,35 @@ export default function Products() {
   const taxAmount = subTotal * 0.06;
   const finalTotal = subTotal + taxAmount;
 
-  // --- ESTE ES EL CAMBIO CLAVE PARA ENVIAR LOS EXTRAS COMO OBJETOS ---
-  const handleAddToCart = () => {
+  /* ===============================
+     VERIFICAR AUTENTICACIÓN ANTES DE AGREGAR AL CARRITO
+  =============================== */
+  const handleAddToCart = async () => {
+    // Verificar si el usuario está autenticado
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      // Usuario no autenticado - mostrar alerta
+      Alert.alert(
+        "Login Required",
+        "You need to log in to add items to your cart. Would you like to log in now?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Login",
+            onPress: () => navigation.navigate("Login"),
+          },
+        ]
+      );
+      return;
+    }
+
+    // Usuario autenticado - proceder con agregar al carrito
     // Ingredientes
     const selectedIngredientsArr = Object.entries(selectedIngredients)
       .filter(([_, value]) => value)
@@ -210,7 +238,7 @@ export default function Products() {
         >
           <Text style={{ fontSize: 24, fontWeight: "bold" }}>{item.Name}</Text>
           <Text style={{ color: "gray", fontSize: 14, marginVertical: 10 }}>
-            {item.description || "Descripción del producto..."}
+            {item.description || "Product description..."}
           </Text>
 
           <Text style={{ fontWeight: "bold", fontSize: 18 }}>Ingredients:</Text>
