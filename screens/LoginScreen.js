@@ -1,5 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,6 +20,9 @@ import {
 import Toast from "react-native-toast-message";
 import { supabase } from "../constants/supabase";
 
+// Importante: esto permite que el navegador se cierre después del OAuth
+WebBrowser.maybeCompleteAuthSession();
+
 const LoginScreen = () => {
   const navigation = useNavigation();
 
@@ -25,7 +30,112 @@ const LoginScreen = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  /* ===============================
+     CONFIGURAR DEEP LINKING
+  =============================== */
+  useEffect(() => {
+    const handleDeepLink = async (event) => {
+      const url = event.url;
+      console.log("Deep link received:", url);
+
+      // Verificar si es un callback de OAuth
+      if (url && (url.includes("#access_token=") || url.includes("?access_token="))) {
+        try {
+          setIsGoogleLoading(true);
+          
+          // Extraer los parámetros del URL
+          const params = parseUrlParams(url);
+          console.log("Parsed params:", params);
+          
+          if (params.access_token && params.refresh_token) {
+            const { data, error } = await supabase.auth.setSession({
+              access_token: params.access_token,
+              refresh_token: params.refresh_token,
+            });
+
+            if (error) throw error;
+
+            console.log("Session set successfully:", data);
+
+            const userName =
+              data.user?.user_metadata?.full_name ||
+              data.user?.user_metadata?.name ||
+              data.user?.email?.split("@")[0] ||
+              "there";
+
+            Toast.show({
+              type: "success",
+              text1: `Welcome, ${userName}! 🎉`,
+              text2: "Signed in with Google successfully",
+              visibilityTime: 3000,
+              topOffset: 60,
+            });
+
+            setTimeout(() => {
+              setIsGoogleLoading(false);
+              navigation.replace("Home");
+            }, 1000);
+          }
+        } catch (error) {
+          console.error("Error handling OAuth callback:", error);
+          setIsGoogleLoading(false);
+          
+          Toast.show({
+            type: "error",
+            text1: "Login failed",
+            text2: error.message || "Something went wrong",
+            visibilityTime: 4000,
+            topOffset: 60,
+          });
+        }
+      }
+    };
+
+    // Suscribirse a eventos de deep linking
+    const subscription = Linking.addEventListener("url", handleDeepLink);
+
+    // Verificar si la app se abrió con un deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        console.log("Initial URL:", url);
+        handleDeepLink({ url });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [navigation]);
+
+  /* ===============================
+     HELPER: PARSEAR URL PARAMS
+  =============================== */
+  const parseUrlParams = (url) => {
+    const params = {};
+    
+    // Manejar tanto hash (#) como query (?)
+    let paramString = "";
+    
+    if (url.includes("#")) {
+      paramString = url.split("#")[1];
+    } else if (url.includes("?")) {
+      paramString = url.split("?")[1];
+    }
+
+    if (paramString) {
+      paramString.split("&").forEach((param) => {
+        const [key, value] = param.split("=");
+        if (key && value) {
+          params[key] = decodeURIComponent(value);
+        }
+      });
+    }
+
+    return params;
+  };
 
   /* ===============================
      VERIFICAR SESIÓN AL INICIAR
@@ -39,7 +149,6 @@ const LoginScreen = () => {
         console.log("Auth event:", event);
 
         if (event === "SIGNED_IN" && session) {
-          // Obtener nombre del usuario
           const userName =
             session.user.user_metadata?.full_name ||
             session.user.user_metadata?.name ||
@@ -56,17 +165,15 @@ const LoginScreen = () => {
 
           setTimeout(() => navigation.replace("Home"), 1000);
         } else if (event === "SIGNED_OUT") {
-          // Usuario cerró sesión manualmente
           setIsCheckingSession(false);
         }
       }
     );
 
-    // Cleanup
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [navigation]);
 
   /* ===============================
      VERIFICAR SI YA HAY SESIÓN ACTIVA
@@ -85,7 +192,6 @@ const LoginScreen = () => {
       }
 
       if (session) {
-        // Ya hay sesión activa, ir directo a Home
         console.log("Session found, redirecting to Home");
 
         const userName =
@@ -104,12 +210,120 @@ const LoginScreen = () => {
 
         setTimeout(() => navigation.replace("Home"), 800);
       } else {
-        // No hay sesión, mostrar pantalla de login
         setIsCheckingSession(false);
       }
     } catch (err) {
       console.error("Unexpected error checking session:", err);
       setIsCheckingSession(false);
+    }
+  };
+
+  /* ===============================
+     GOOGLE SIGN IN - VERSIÓN MEJORADA
+  =============================== */
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsGoogleLoading(true);
+
+      // Crear el redirect URL usando tu scheme personalizado
+      const redirectUrl = "farmlanddeli://";
+      console.log("Redirect URL:", redirectUrl);
+
+      // Iniciar el flujo OAuth con Google
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) throw error;
+
+      console.log("OAuth URL:", data?.url);
+
+      // Abrir el navegador para OAuth
+      if (data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectUrl,
+          {
+            showInRecents: true,
+          }
+        );
+
+        console.log("=== WebBrowser Result ===");
+        console.log("Type:", result.type);
+        console.log("URL:", result.url);
+
+        // Si el resultado trae URL, procesarla directamente
+        if (result.type === "success" && result.url) {
+          console.log("Processing URL directly:", result.url);
+          
+          // Procesar el URL manualmente si contiene tokens
+          if (result.url.includes("#access_token=") || result.url.includes("?access_token=")) {
+            const params = parseUrlParams(result.url);
+            console.log("Extracted params:", params);
+            
+            if (params.access_token && params.refresh_token) {
+              const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+                access_token: params.access_token,
+                refresh_token: params.refresh_token,
+              });
+
+              if (sessionError) throw sessionError;
+
+              const userName =
+                sessionData.user?.user_metadata?.full_name ||
+                sessionData.user?.user_metadata?.name ||
+                sessionData.user?.email?.split("@")[0] ||
+                "there";
+
+              Toast.show({
+                type: "success",
+                text1: `Welcome, ${userName}! 🎉`,
+                text2: "Signed in with Google successfully",
+                visibilityTime: 3000,
+                topOffset: 60,
+              });
+
+              setTimeout(() => {
+                setIsGoogleLoading(false);
+                navigation.replace("Home");
+              }, 1000);
+            }
+          }
+        } else if (result.type === "cancel") {
+          setIsGoogleLoading(false);
+          Toast.show({
+            type: "info",
+            text1: "Login cancelled",
+            text2: "You cancelled the Google sign-in",
+            visibilityTime: 3000,
+            topOffset: 60,
+          });
+        } else if (result.type === "dismiss") {
+          setIsGoogleLoading(false);
+          Toast.show({
+            type: "info",
+            text1: "Login dismissed",
+            text2: "Browser was closed",
+            visibilityTime: 3000,
+            topOffset: 60,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Google Sign-In error:", error);
+      setIsGoogleLoading(false);
+      
+      Toast.show({
+        type: "error",
+        text1: "Google Sign-In failed",
+        text2: error.message || "Please try again",
+        visibilityTime: 4000,
+        topOffset: 60,
+      });
     }
   };
 
@@ -138,12 +352,10 @@ const LoginScreen = () => {
 
       if (error) throw error;
 
-      // La navegación y el toast se manejan en onAuthStateChange
       console.log("Login successful:", data.user.email);
     } catch (err) {
       let errorMessage = err.message;
 
-      // Mensajes más amigables
       if (err.message.includes("Invalid login credentials")) {
         errorMessage = "Wrong email or password";
       } else if (err.message.includes("Email not confirmed")) {
@@ -177,7 +389,7 @@ const LoginScreen = () => {
   };
 
   /* ===============================
-     MOSTRAR LOADING MIENTRAS VERIFICA SESIÓN
+     LOADING STATE
   =============================== */
   if (isCheckingSession) {
     return (
@@ -217,6 +429,7 @@ const LoginScreen = () => {
 
             <Text style={styles.title}>Hello!</Text>
 
+            {/* EMAIL INPUT */}
             <TextInput
               style={styles.input}
               placeholder="Email"
@@ -225,9 +438,10 @@ const LoginScreen = () => {
               keyboardType="email-address"
               value={email}
               onChangeText={setEmail}
-              editable={!isLoading}
+              editable={!isLoading && !isGoogleLoading}
             />
 
+            {/* PASSWORD INPUT */}
             <View style={styles.passwordContainer}>
               <TextInput
                 style={styles.passwordInput}
@@ -236,7 +450,7 @@ const LoginScreen = () => {
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
-                editable={!isLoading}
+                editable={!isLoading && !isGoogleLoading}
                 onSubmitEditing={handleLogin}
                 returnKeyType="go"
               />
@@ -249,10 +463,14 @@ const LoginScreen = () => {
               </Pressable>
             </View>
 
+            {/* LOGIN BUTTON */}
             <Pressable
-              style={[styles.button, isLoading && styles.buttonDisabled]}
+              style={[
+                styles.button,
+                (isLoading || isGoogleLoading) && styles.buttonDisabled,
+              ]}
               onPress={handleLogin}
-              disabled={isLoading}
+              disabled={isLoading || isGoogleLoading}
             >
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
@@ -261,27 +479,75 @@ const LoginScreen = () => {
               )}
             </Pressable>
 
+            {/* SIGN UP LINK */}
             <Pressable
-              onPress={() => !isLoading && navigation.navigate("Register")}
+              onPress={() =>
+                !isLoading &&
+                !isGoogleLoading &&
+                navigation.navigate("Register")
+              }
               style={{ marginTop: 15 }}
-              disabled={isLoading}
+              disabled={isLoading || isGoogleLoading}
             >
-              <Text style={[styles.link, isLoading && styles.linkDisabled]}>
+              <Text
+                style={[
+                  styles.link,
+                  (isLoading || isGoogleLoading) && styles.linkDisabled,
+                ]}
+              >
                 Don't have an account? Sign up
               </Text>
             </Pressable>
 
-            {/* NUEVA OPCIÓN: Continue as Guest */}
+            {/* DIVIDER */}
             <View style={styles.dividerContainer}>
               <View style={styles.divider} />
               <Text style={styles.dividerText}>OR</Text>
               <View style={styles.divider} />
             </View>
 
+            {/* BOTÓN DE GOOGLE SIGN IN */}
             <Pressable
-              style={[styles.guestButton, isLoading && styles.buttonDisabled]}
+              style={[
+                styles.googleButton,
+                isGoogleLoading && styles.buttonDisabled,
+              ]}
+              onPress={handleGoogleSignIn}
+              disabled={isGoogleLoading || isLoading}
+            >
+              {isGoogleLoading ? (
+                <ActivityIndicator color="#666" />
+              ) : (
+                <>
+                  <Image
+                    source={{
+                      uri: "https://www.google.com/favicon.ico",
+                    }}
+                    style={styles.googleIcon}
+                  />
+                  <Text style={styles.googleButtonText}>
+                    Continue with Google
+                  </Text>
+                </>
+              )}
+            </Pressable>
+
+            {/* DIVIDER */}
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.divider} />
+            </View>
+
+            {/* GUEST OPTION */}
+
+            <Pressable
+              style={[
+                styles.guestButton,
+                (isLoading || isGoogleLoading) && styles.buttonDisabled,
+              ]}
               onPress={handleContinueAsGuest}
-              disabled={isLoading}
+              disabled={isLoading || isGoogleLoading}
             >
               <Text style={styles.guestButtonText}>Continue as Guest</Text>
             </Pressable>
@@ -325,6 +591,32 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: "#666",
+  },
+  googleButton: {
+    width: "90%",
+    height: 50,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    flexDirection: "row",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 10,
+  },
+  googleButtonText: {
+    color: "#666",
+    fontSize: 16,
+    fontWeight: "600",
   },
   input: {
     width: "90%",

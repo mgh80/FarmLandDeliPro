@@ -15,15 +15,16 @@
       "intentFilters": [
         {
           "action": "VIEW",
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ],
+          "autoVerify": true,
           "data": [
             {
               "scheme": "farmlanddeli",
-              "host": "auth"
+              "host": "*"
             }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
           ]
         }
       ]
@@ -34,12 +35,28 @@
       }
     },
     "plugins": [
-      "expo-web-browser"
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": false,
+            "enableShrinkResourcesInReleaseBuilds": false
+          }
+        }
+      ]
     ],
     "ios": {
       "bundleIdentifier": "com.farmlanddeli.mobile",
+      "supportsTablet": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": ["farmlanddeli"],
+            "CFBundleURLName": "com.farmlanddeli.mobile"
+          }
+        ],
+        "LSApplicationQueriesSchemes": ["farmlanddeli"]
       }
     }
   }
