@@ -22,11 +22,6 @@ export default function Products() {
   const { addToCart } = useCart();
   let item = params;
 
-  // Debug: Agregar logs al inicio
-  console.log("=== PRODUCTO COMPLETO ===");
-  console.log(JSON.stringify(item, null, 2));
-  console.log("CategoryId específico:", item.CategoryId);
-  console.log("========================");
 
   const [quantity, setQuantity] = useState(1);
   const [ingredients, setIngredients] = useState([]);
@@ -45,11 +40,9 @@ export default function Products() {
   const isComboAvailable = () => {
     if (productCategoryId === null) return false;
 
-    const numCategoryId = Number(productCategoryId);
-    console.log("Verificando combo - CategoryId:", numCategoryId);
+    const numCategoryId = Number(productCategoryId);   
 
-    const isAvailable = numCategoryId === 6 || numCategoryId === 16;
-    console.log("Combo disponible:", isAvailable);
+    const isAvailable = numCategoryId === 6 || numCategoryId === 16;    
 
     return isAvailable; // Solo Hot Sandwich (6) y Quesadillas (16)
   };
@@ -77,8 +70,7 @@ export default function Products() {
         .single();
 
       if (!productError && productData) {
-        setProductCategoryId(productData.CategoryId);
-        console.log("CategoryId obtenido de la DB:", productData.CategoryId);
+        setProductCategoryId(productData.CategoryId);       
       }
     };
 

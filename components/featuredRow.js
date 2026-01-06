@@ -1,15 +1,17 @@
-import React from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
+  FlatList,
   StyleSheet,
-  ScrollView,
+  Text,
+  View,
 } from "react-native";
 import ProductCard from "./productCard";
-import { themeColors } from "../theme";
 
 export default function FeaturedRow({ title, description, products = [] }) {
+  // Renderizar cada producto
+  const renderProduct = ({ item }) => (
+    <ProductCard item={item} />
+  );
+
   return (
     <View style={styles.container}>
       {/* Cabecera */}
@@ -20,16 +22,19 @@ export default function FeaturedRow({ title, description, products = [] }) {
         </View>
       </View>
 
-      {/* Scroll horizontal */}
-      <ScrollView
+      {/* Scroll horizontal - FIX: Cambio de ScrollView a FlatList */}
+      <FlatList
         horizontal
+        data={products}
+        renderItem={renderProduct}
+        keyExtractor={(item, index) => item.id?.toString() || item.Id?.toString() || `product-${index}`}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 15 }}
-      >
-        {products.map((product) => (
-          <ProductCard item={product} key={product.id} />
-        ))}
-      </ScrollView>
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={5}
+        windowSize={5}
+        initialNumToRender={3}
+      />
     </View>
   );
 }

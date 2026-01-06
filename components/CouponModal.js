@@ -1,18 +1,17 @@
 // CouponModal.js
-import React from "react";
 import {
-  View,
-  Text,
-  Modal,
-  TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-  Share,
   Alert,
+  Dimensions,
+  Modal,
   Platform,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import * as Icon from "react-native-feather";
 import * as Animatable from "react-native-animatable";
+import * as Icon from "react-native-feather";
 
 const { width } = Dimensions.get("window");
 

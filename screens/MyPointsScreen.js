@@ -25,8 +25,7 @@ export default function MyPointsScreen() {
       error: userError,
     } = await supabase.auth.getUser();
 
-    if (userError || !user) {
-      console.error("Error al obtener usuario:", userError);
+    if (userError || !user) {     
       setErrorMsg("Unable to load points.");
       setLoading(false);
       return;
@@ -38,8 +37,7 @@ export default function MyPointsScreen() {
       .eq("id", user.id)
       .single();
 
-    if (error) {
-      console.error("Error Supabase:", error.message);
+    if (error) {      
       setErrorMsg("Unable to retrieve your points.");
     } else {
       setPoints(data?.points || 0);

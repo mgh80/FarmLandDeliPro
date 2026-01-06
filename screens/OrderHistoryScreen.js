@@ -25,8 +25,7 @@ export default function OrderHistoryScreen() {
       error: userError,
     } = await supabase.auth.getUser();
 
-    if (userError || !user) {
-      console.error("Error al obtener usuario:", userError);
+    if (userError || !user) {      
       setOrders([]);
       setLoading(false);
       return;
@@ -43,8 +42,7 @@ export default function OrderHistoryScreen() {
       .eq("userid", user.id)
       .order("date", { ascending: false });
 
-    if (error) {
-      console.error("Supabase Orders Error:", error.message);
+    if (error) {     
       setOrders([]);
     } else {
       setOrders(data || []);

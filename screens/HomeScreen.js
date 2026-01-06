@@ -1,15 +1,15 @@
 import { useNavigation } from "@react-navigation/native";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Modal,
-  Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View,
+  View
 } from "react-native";
 import * as Icon from "react-native-feather";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -32,13 +32,51 @@ export default function HomeScreen() {
   const [searchText, setSearchText] = useState("");
   const [userName, setUserName] = useState("");
   const [isGuest, setIsGuest] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Ref para el ScrollView
+  const scrollViewRef = useRef(null);
 
   const products = useProducts();
   const categories = useCategories();
 
+  /* ===============================
+     REFRESH DATA
+  =============================== */
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    
+    try {
+      // Aquí puedes recargar los datos si usas estados locales
+      // Si usas hooks como useProducts(), estos deberían tener su propia lógica de recarga
+      
+      // Recargar nombre de usuario
+      await fetchUserName();
+      
+      Toast.show({
+        type: "success",
+        text1: "Refreshed! 🔄",
+        text2: "Content updated",
+        visibilityTime: 2000,
+        topOffset: 60,
+      });
+    } catch (error) {
+      console.error("Error refreshing:", error);
+      Toast.show({
+        type: "error",
+        text1: "Refresh failed",
+        text2: "Please try again",
+        visibilityTime: 3000,
+        topOffset: 60,
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    clearCart(); // Limpiar carrito al hacer logout
+    clearCart();
     navigation.replace("Login");
   };
 
@@ -80,8 +118,6 @@ export default function HomeScreen() {
         return;
       }
 
-      // OPCIÓN: Soft Delete - Marcar como eliminado sin borrar
-      // Primero verifica si la columna "deleted" existe
       const { error: updateError } = await supabase
         .from("Users")
         .update({ 
@@ -93,7 +129,6 @@ export default function HomeScreen() {
       if (updateError) {
         console.error("Error marking user as deleted:", updateError);
         
-        // Si la columna no existe, intentar eliminar directamente
         const { error: deleteError } = await supabase
           .from("Users")
           .delete()
@@ -123,9 +158,8 @@ export default function HomeScreen() {
         }
       }
 
-      // Cerrar sesión después de eliminar/marcar como eliminado
       await supabase.auth.signOut();
-      clearCart(); // Limpiar carrito
+      clearCart();
 
       Toast.show({
         type: "success",
@@ -148,28 +182,51 @@ export default function HomeScreen() {
     }
   };
 
+  const fetchUserName = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      setIsGuest(false);
+      const { data } = await supabase
+        .from("Users")
+        .select("name")
+        .eq("id", user.id)
+        .single();
+
+      if (data) setUserName(data.name);
+    } else {
+      setIsGuest(true);
+      setUserName("Guest");
+    }
+  };
+
   useEffect(() => {
-    const fetchUserName = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (user) {
-        setIsGuest(false);
-        const { data } = await supabase
-          .from("Users")
-          .select("name")
-          .eq("id", user.id)
-          .single();
-
-        if (data) setUserName(data.name);
-      } else {
-        setIsGuest(true);
-        setUserName("Guest");
-      }
-    };
-
     fetchUserName();
+  }, []);
+
+  /* ===============================
+     FIX: Navegación al carrito
+  =============================== */
+  const handleCartPress = useCallback(() => {
+    navigation.navigate("Cart");
+  }, [navigation]);
+
+  const handleHomePress = useCallback(() => {
+    // Resetear búsqueda y categoría activa
+    setSearchText("");
+    setActiveCategory(null);
+    
+    // Scroll al inicio del ScrollView
+    scrollViewRef.current?.scrollTo({
+      y: 0,
+      animated: true,
+    });
+  }, []);
+
+  const handleProfilePress = useCallback(() => {
+    setShowSidebar(true);
   }, []);
 
   return (
@@ -233,10 +290,21 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Contenido */}
+      {/* Contenido con Pull-to-Refresh */}
       <ScrollView
+        ref={scrollViewRef}
         style={{ marginTop: 10 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#4a90e2']}
+            tintColor="#4a90e2"
+            title="Pull to refresh"
+            titleColor="#999"
+          />
+        }
       >
         <Categories
           activeCategory={activeCategory}
@@ -264,7 +332,7 @@ export default function HomeScreen() {
         <RewardsSection />
       </ScrollView>
 
-      {/* Barra inferior */}
+      {/* Barra inferior - FIX: Simplificado sin onPressIn/onPressOut */}
       <View
         style={{
           flexDirection: "row",
@@ -276,38 +344,39 @@ export default function HomeScreen() {
           backgroundColor: "#fff",
         }}
       >
-        <Pressable
-          onPressIn={() => setPressedIcon("home")}
-          onPressOut={() => setPressedIcon(null)}
+        {/* HOME */}
+        <TouchableOpacity
+          onPress={handleHomePress}
+          activeOpacity={0.7}
           style={{ alignItems: "center" }}
         >
           <Icon.Home
             width={26}
             height={26}
-            stroke={pressedIcon === "home" ? "#1F2937" : "#6B7280"}
+            stroke="#1F2937"
           />
           <Text
             style={{
               fontSize: 10,
               marginTop: 2,
-              color: pressedIcon === "home" ? "#1F2937" : "#6B7280",
-              fontWeight: pressedIcon === "home" ? "600" : "400",
+              color: "#1F2937",
+              fontWeight: "600",
             }}
           >
             Home
           </Text>
-        </Pressable>
+        </TouchableOpacity>
 
-        <Pressable
-          onPress={() => navigation.navigate("Cart")}
-          onPressIn={() => setPressedIcon("cart")}
-          onPressOut={() => setPressedIcon(null)}
+        {/* CART - FIX: TouchableOpacity en lugar de Pressable */}
+        <TouchableOpacity
+          onPress={handleCartPress}
+          activeOpacity={0.7}
           style={{ position: "relative", alignItems: "center" }}
         >
           <Icon.ShoppingCart
             width={26}
             height={26}
-            stroke={pressedIcon === "cart" ? "#1F2937" : "#6B7280"}
+            stroke="#6B7280"
           />
           {getTotalItems() > 0 && (
             <View
@@ -335,36 +404,36 @@ export default function HomeScreen() {
             style={{
               fontSize: 10,
               marginTop: 2,
-              color: pressedIcon === "cart" ? "#1F2937" : "#6B7280",
-              fontWeight: pressedIcon === "cart" ? "600" : "400",
+              color: "#6B7280",
+              fontWeight: "400",
             }}
           >
             Cart
           </Text>
-        </Pressable>
+        </TouchableOpacity>
 
-        <Pressable
-          onPressIn={() => setPressedIcon("profile")}
-          onPressOut={() => setPressedIcon(null)}
-          onPress={() => setShowSidebar(true)}
+        {/* PROFILE */}
+        <TouchableOpacity
+          onPress={handleProfilePress}
+          activeOpacity={0.7}
           style={{ alignItems: "center" }}
         >
           <Icon.User
             width={24}
             height={24}
-            stroke={pressedIcon === "profile" ? "#1F2937" : "#6B7280"}
+            stroke="#6B7280"
           />
           <Text
             style={{
               fontSize: 10,
               marginTop: 2,
-              color: pressedIcon === "profile" ? "#1F2937" : "#6B7280",
-              fontWeight: pressedIcon === "profile" ? "600" : "400",
+              color: "#6B7280",
+              fontWeight: "400",
             }}
           >
             Profile
           </Text>
-        </Pressable>
+        </TouchableOpacity>
       </View>
 
       {/* Sidebar */}
@@ -396,8 +465,6 @@ export default function HomeScreen() {
               paddingHorizontal: 20,
               borderTopLeftRadius: 16,
               borderBottomLeftRadius: 16,
-
-              // sombreado moderno
               shadowColor: "#000",
               shadowOpacity: 0.25,
               shadowOffset: { width: -2, height: 0 },

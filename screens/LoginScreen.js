@@ -38,8 +38,7 @@ const LoginScreen = () => {
   =============================== */
   useEffect(() => {
     const handleDeepLink = async (event) => {
-      const url = event.url;
-      console.log("Deep link received:", url);
+      const url = event.url;    
 
       // Verificar si es un callback de OAuth
       if (url && (url.includes("#access_token=") || url.includes("?access_token="))) {
@@ -47,8 +46,7 @@ const LoginScreen = () => {
           setIsGoogleLoading(true);
           
           // Extraer los parámetros del URL
-          const params = parseUrlParams(url);
-          console.log("Parsed params:", params);
+          const params = parseUrlParams(url);        
           
           if (params.access_token && params.refresh_token) {
             const { data, error } = await supabase.auth.setSession({
@@ -56,9 +54,7 @@ const LoginScreen = () => {
               refresh_token: params.refresh_token,
             });
 
-            if (error) throw error;
-
-            console.log("Session set successfully:", data);
+            if (error) throw error;           
 
             const userName =
               data.user?.user_metadata?.full_name ||
@@ -79,8 +75,7 @@ const LoginScreen = () => {
               navigation.replace("Home");
             }, 1000);
           }
-        } catch (error) {
-          console.error("Error handling OAuth callback:", error);
+        } catch (error) {          
           setIsGoogleLoading(false);
           
           Toast.show({
@@ -99,8 +94,7 @@ const LoginScreen = () => {
 
     // Verificar si la app se abrió con un deep link
     Linking.getInitialURL().then((url) => {
-      if (url) {
-        console.log("Initial URL:", url);
+      if (url) {       
         handleDeepLink({ url });
       }
     });
@@ -145,8 +139,7 @@ const LoginScreen = () => {
 
     // Escuchar cambios de autenticación
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth event:", event);
+      async (event, session) => {       
 
         if (event === "SIGNED_IN" && session) {
           const userName =
@@ -185,14 +178,12 @@ const LoginScreen = () => {
         error,
       } = await supabase.auth.getSession();
 
-      if (error) {
-        console.error("Error checking session:", error);
+      if (error) {       
         setIsCheckingSession(false);
         return;
       }
 
-      if (session) {
-        console.log("Session found, redirecting to Home");
+      if (session) {        
 
         const userName =
           session.user.user_metadata?.full_name ||
@@ -212,8 +203,7 @@ const LoginScreen = () => {
       } else {
         setIsCheckingSession(false);
       }
-    } catch (err) {
-      console.error("Unexpected error checking session:", err);
+    } catch (err) {      
       setIsCheckingSession(false);
     }
   };
@@ -226,8 +216,7 @@ const LoginScreen = () => {
       setIsGoogleLoading(true);
 
       // Crear el redirect URL usando tu scheme personalizado
-      const redirectUrl = "farmlanddeli://";
-      console.log("Redirect URL:", redirectUrl);
+      const redirectUrl = "farmlanddeli://";    
 
       // Iniciar el flujo OAuth con Google
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -238,9 +227,7 @@ const LoginScreen = () => {
         },
       });
 
-      if (error) throw error;
-
-      console.log("OAuth URL:", data?.url);
+      if (error) throw error;     
 
       // Abrir el navegador para OAuth
       if (data?.url) {
@@ -250,20 +237,14 @@ const LoginScreen = () => {
           {
             showInRecents: true,
           }
-        );
-
-        console.log("=== WebBrowser Result ===");
-        console.log("Type:", result.type);
-        console.log("URL:", result.url);
+        );      
 
         // Si el resultado trae URL, procesarla directamente
-        if (result.type === "success" && result.url) {
-          console.log("Processing URL directly:", result.url);
+        if (result.type === "success" && result.url) {         
           
           // Procesar el URL manualmente si contiene tokens
           if (result.url.includes("#access_token=") || result.url.includes("?access_token=")) {
-            const params = parseUrlParams(result.url);
-            console.log("Extracted params:", params);
+            const params = parseUrlParams(result.url);           
             
             if (params.access_token && params.refresh_token) {
               const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
@@ -313,8 +294,7 @@ const LoginScreen = () => {
           });
         }
       }
-    } catch (error) {
-      console.error("Google Sign-In error:", error);
+    } catch (error) {     
       setIsGoogleLoading(false);
       
       Toast.show({
@@ -350,9 +330,7 @@ const LoginScreen = () => {
         password,
       });
 
-      if (error) throw error;
-
-      console.log("Login successful:", data.user.email);
+      if (error) throw error;     
     } catch (err) {
       let errorMessage = err.message;
 

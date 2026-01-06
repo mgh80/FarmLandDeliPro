@@ -1,15 +1,15 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  View,
-  Image,
-  FlatList,
-  Dimensions,
-  StyleSheet,
   ActivityIndicator,
-  Text,
+  Dimensions,
+  FlatList,
+  Image,
   Modal,
-  TouchableWithoutFeedback,
+  StyleSheet,
+  Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from "react-native";
 import { supabase } from "../constants/supabase";
 
@@ -29,8 +29,7 @@ export default function Carousel() {
         .select("*")
         .eq("active", true);
 
-      if (error) {
-        console.error("Error fetching promotions:", error);
+      if (error) {       
       } else {
         setBanners(data);
       }
