@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Linking,
   Platform,
   StyleSheet,
@@ -33,10 +34,12 @@ export default function AuthorizePaymentScreen({ route, navigation }) {
   const [referenceId, setReferenceId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const verificationInProgress = useRef(false);
 
   const { cartItems, clearCart } = useCart();
   const amount = route?.params?.amount || 0.01;
-  const userId = route?.params?.userId || null; // ✅ usuario autenticado
+  const userId = route?.params?.userId || null;
   const cartFromRoute = route?.params?.cartItems || [];
 
   // ===========================
@@ -57,7 +60,8 @@ export default function AuthorizePaymentScreen({ route, navigation }) {
         }
 
         clearCart();
-        navigation.replace("OrderConfirmationScreen", {
+        // ✅ Nombre correcto: OrderConfirmation
+        navigation.replace("OrderConfirmation", {
           orderNumber: params.orderNumber,
           points: parseInt(params.pointsEarned) || 0,
           total: parseFloat(params.total) || 0,
@@ -74,15 +78,14 @@ export default function AuthorizePaymentScreen({ route, navigation }) {
   }, [navigation, clearCart]);
 
   // ===========================
-  // 🔹 Crear transacción en Authorize.Net
+  // 🔹 Crear transacción
   // ===========================
   useEffect(() => {
     const createTransaction = async () => {
       try {
-        const referenceId =
+        const refId =
           route?.params?.referenceId || `FD-${Date.now()}-${amount.toFixed(2)}`;
 
-        // 🧹 Limpiar carrito (solo datos necesarios)
         const cleanCartItems = (cartFromRoute || []).map((item) => ({
           id: item.id || item.productid || item.ProductID,
           quantity: item.quantity || 1,
@@ -98,9 +101,9 @@ export default function AuthorizePaymentScreen({ route, navigation }) {
             },
             body: JSON.stringify({
               amount: Number(amount.toFixed(2)),
-              referenceId,
+              referenceId: refId,
               cartItems: cleanCartItems,
-              userId, // ✅ ahora se envía al backend
+              userId,
             }),
           }
         );
@@ -115,10 +118,9 @@ export default function AuthorizePaymentScreen({ route, navigation }) {
 
         setToken(data.token);
         setCheckoutUrl(data.checkoutUrl);
-        setReferenceId(referenceId);
+        setReferenceId(refId);
         setIsLoading(false);
-      } catch (err) {
-        console.error("💥 Error creando transacción:", err);
+      } catch (err) {        
         setError(err.message);
         setIsLoading(false);
       }
@@ -128,7 +130,7 @@ export default function AuthorizePaymentScreen({ route, navigation }) {
   }, [amount, userId, cartFromRoute]);
 
   // ===========================
-  // 🔹 Redirección Web (solo browser)
+  // 🔹 Redirección Web
   // ===========================
   useEffect(() => {
     if (Platform.OS === "web" && token) {
@@ -149,78 +151,177 @@ export default function AuthorizePaymentScreen({ route, navigation }) {
   }, [token]);
 
   // ===========================
-  // 🔹 Verificar redirección del pago
+  // 🔹 Verificar pago
   // ===========================
-  const handleNavigationStateChange = async (navState) => {
-    const { url } = navState;
+  const verifyPayment = async (retryCount = 0) => {
+    if (verificationInProgress.current) {
+      return;
+    }
 
-    if (url.includes("verify-payment") || url.includes("order-confirmation")) {
-      try {
-        const urlObj = new URL(url);
-        const transId = urlObj.searchParams.get("transId");
-        const referenceIdParam =
-          urlObj.searchParams.get("referenceId") || referenceId;
+    verificationInProgress.current = true;
 
-        if (transId || referenceIdParam) {
-          Toast.show({
-            type: "info",
-            text1: "Verifying payment",
-            text2: "Please wait a moment...",
-            position: "top",
-            autoHide: false,
-          });
+    try {     
 
-          const verifyUrl = `${BACKEND}/api/authorize/verify-payment?${
-            transId ? `transId=${transId}` : `referenceId=${referenceIdParam}`
-          }`;
+      const verifyUrl = `${BACKEND}/api/authorize/check-payment-status?referenceId=${referenceId}`;
+      const verifyResponse = await fetch(verifyUrl, {
+        headers: { Accept: "application/json" },
+      });
 
-          const verifyResponse = await fetch(verifyUrl);
-          const contentType = verifyResponse.headers.get("content-type");
+      if (!verifyResponse.ok) {
+        throw new Error(`HTTP ${verifyResponse.status}`);
+      }
 
-          if (contentType && contentType.includes("text/html")) {
-            return;
-          }
+      const result = await verifyResponse.json();     
 
-          const result = await verifyResponse.json();
-          Toast.hide();
+      if (result.status === "paid") {
+        verificationInProgress.current = false;
+        Toast.hide();
 
-          if (result.status === "paid") {
-            Toast.show({
-              type: "success",
-              text1: "Successfull payment!",
-              text2: `You won ${result.pointsEarned || 0} points 🎉`,
-              position: "top",
-              visibilityTime: 3000,
-            });
+        Toast.show({
+          type: "success",
+          text1: "Successful Payment!",
+          text2: `You win ${result.pointsEarned || 0} points 🎉`,
+          position: "top",
+          visibilityTime: 1500,
+        });
 
-            clearCart();
+        setTimeout(() => {
+          clearCart();
+          
+          // Obtener el nombre de la ruta desde la navegación
+          const routes = navigation.getState?.()?.routes || [];         
+          
+          // Intentar diferentes métodos de navegación
+          try {
+            // Primero intentar con replace
             navigation.replace("OrderConfirmationScreen", {
               orderNumber: result.orderNumber,
               points: result.pointsEarned || 0,
               total: result.total || amount,
             });
-          } else {
-            Toast.show({
-              type: "info",
-              text1: "Pago pendiente",
-              text2: "Tu pago está siendo procesado",
-              position: "top",
-              visibilityTime: 4000,
-            });
+          } catch (err) {      
+            try {
+              navigation.navigate("OrderConfirmationScreen", {
+                orderNumber: result.orderNumber,
+                points: result.pointsEarned || 0,
+                total: result.total || amount,
+              });
+            } catch (err2) {              
+              try {
+                // Tal vez el nombre sea sin "Screen"
+                navigation.navigate("OrderConfirmation", {
+                  orderNumber: result.orderNumber,
+                  points: result.pointsEarned || 0,
+                  total: result.total || amount,
+                });
+              } catch (err3) {          
+                // Mostrar alerta con la info
+                Alert.alert(
+                  "Successful Payment!",
+                  `Order: ${result.orderNumber}\nTotal: ${result.total}\nPoints: ${result.pointsEarned}`,
+                  [{ text: "OK", onPress: () => navigation.goBack() }]
+                );
+              }
+            }
           }
-        }
-      } catch (err) {
-        console.error("💥 Error procesando redirección:", err);
+        }, 800);
+        return;
+      }
+
+      // Reintentar si está pendiente
+      if (retryCount < 8) {
+        verificationInProgress.current = false;
+        setTimeout(() => verifyPayment(retryCount + 1), 2000);
+      } else {
+        verificationInProgress.current = false;
+        Toast.hide();
+        Toast.show({
+          type: "info",
+          text1: "Pending verification",
+          text2: "Your payment is being processed",
+          position: "top",
+          visibilityTime: 4000,
+        });
+        setTimeout(() => navigation.goBack(), 3000);
+      }
+    } catch (err) {      
+      verificationInProgress.current = false;
+
+      if (retryCount < 8) {
+        setTimeout(() => verifyPayment(retryCount + 1), 2000);
+      } else {
         Toast.hide();
         Toast.show({
           type: "error",
           text1: "Error",
-          text2: "No se pudo verificar el pago",
+          text2: "Payment could not be verified",
           position: "top",
           visibilityTime: 4000,
         });
+        setTimeout(() => navigation.goBack(), 3000);
       }
     }
+  };
+
+  // ===========================
+  // 🔹 INTERCEPTAR REDIRECCIÓN - CLAVE
+  // ===========================
+  const handleNavigationStateChange = (navState) => {
+    const { url } = navState;    
+
+    // ✅ INTERCEPTAR cuando intente ir a order-confirmation
+    if (url.includes("order-confirmation") && !paymentCompleted && referenceId) {
+
+      setPaymentCompleted(true);
+
+      Toast.show({
+        type: "info",
+        text1: "Proccesing payment",
+        text2: "One momnent please...",
+        position: "top",
+        autoHide: false,
+      });
+
+      // Iniciar verificación
+      setTimeout(() => {
+        verifyPayment(0);
+      }, 1500);
+
+      // ❌ NO dejar que cargue la página web
+      // El WebView NO debe navegar más
+      return false; 
+    }
+  };
+
+  // ===========================
+  // 🔹 Bloquear carga de order-confirmation
+  // ===========================
+  const handleShouldStartLoadWithRequest = (request) => {
+    const { url } = request;
+    
+    // ✅ Bloquear navegación a order-confirmation
+    if (url.includes("order-confirmation")) {    
+      
+      if (!paymentCompleted && referenceId) {
+        setPaymentCompleted(true);
+        
+        Toast.show({
+          type: "info",
+          text1: "Processing Payment",
+          text2: "One moment please...",
+          position: "top",
+          autoHide: false,
+        });
+
+        setTimeout(() => {
+          verifyPayment(0);
+        }, 1500);
+      }
+      
+      return false; // ❌ NO cargar esta URL
+    }
+
+    return true; // ✅ Permitir otras URLs
   };
 
   // ===========================
@@ -230,7 +331,7 @@ export default function AuthorizePaymentScreen({ route, navigation }) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#FFA500" />
-        <Text style={styles.loadingText}>Conecting with Authorize.Net...</Text>
+        <Text style={styles.loadingText}>Conectando con Authorize.Net...</Text>
       </View>
     );
 
@@ -242,13 +343,13 @@ export default function AuthorizePaymentScreen({ route, navigation }) {
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          <Text style={styles.backButtonText}>Back</Text>
+          <Text style={styles.backButtonText}>Volver</Text>
         </TouchableOpacity>
       </View>
     );
 
   // ===========================
-  // 🔹 WebView (solo móvil)
+  // 🔹 WebView (móvil)
   // ===========================
   if (Platform.OS !== "web") {
     const paymentFormHtml = `
@@ -269,8 +370,15 @@ export default function AuthorizePaymentScreen({ route, navigation }) {
         <WebView
           source={{ html: paymentFormHtml }}
           onNavigationStateChange={handleNavigationStateChange}
+          onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
           javaScriptEnabled
           domStorageEnabled
+          startInLoadingState={true}
+          renderLoading={() => (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#FFA500" />
+            </View>
+          )}
           style={{ flex: 1, backgroundColor: "#000" }}
         />
         <Toast />
@@ -279,7 +387,7 @@ export default function AuthorizePaymentScreen({ route, navigation }) {
   }
 
   // ===========================
-  // 🔹 Vista informativa en Web
+  // 🔹 Vista Web
   // ===========================
   return (
     <div
@@ -294,8 +402,8 @@ export default function AuthorizePaymentScreen({ route, navigation }) {
         fontFamily: "sans-serif",
       }}
     >
-      <h2>Redirecting to Authorize.Net...</h2>
-      <p>Please wait a moment...</p>
+      <h2>Redirigiendo a Authorize.Net...</h2>
+      <p>Por favor espera un momento...</p>
     </div>
   );
 }
@@ -308,6 +416,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#F9FAFB",
   },
   loadingText: { marginTop: 10, fontSize: 16 },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#000",
+  },
   errorContainer: {
     flex: 1,
     justifyContent: "center",

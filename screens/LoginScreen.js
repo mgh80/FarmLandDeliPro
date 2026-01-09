@@ -33,28 +33,106 @@ const LoginScreen = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
 
+ /* ===============================
+   GUARDAR USUARIO EN LA TABLA USERS - CORREGIDO
+=============================== */
+const saveUserToDatabase = async (user) => {
+  try {
+    console.log("🔍 Attempting to save user:", user.id);
+    
+    // ✅ FIX 1: Cambiar "users" a "Users" (mayúscula)
+    // ✅ FIX 2: Primero verificar si el usuario existe
+    const { data: existingUser, error: checkError } = await supabase
+      .from("Users")
+      .select("id")
+      .eq("id", user.id)
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error("❌ Error checking user:", checkError);
+    }
+
+    const userData = {
+      id: user.id,
+      email: user.email,
+      name:
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email?.split("@")[0]      
+    };
+
+    // Si el usuario existe, actualizarlo. Si no, insertarlo.
+    if (existingUser) {
+      console.log("📝 Updating existing user...");
+      const { data, error } = await supabase
+        .from("Users")
+        .update({
+          email: userData.email,
+          fullname: userData.fullname,
+          profilepicture: userData.profilepicture,
+        })
+        .eq("id", user.id)
+        .select();
+
+      if (error) {
+        console.error("❌ Error updating user:", error);
+        console.error("Error details:", JSON.stringify(error, null, 2));
+      } else {
+        console.log("✅ User updated successfully:", data);
+      }
+    } else {
+      console.log("➕ Inserting new user...");
+      const { data, error } = await supabase
+        .from("Users")
+        .insert({
+          id: userData.id,
+          email: userData.email,
+          fullname: userData.fullname,
+          profilepicture: userData.profilepicture,
+          dateCreated: new Date().toISOString(),
+          points: 0,
+        })
+        .select();
+
+      if (error) {
+        console.error("❌ Error inserting user:", error);
+        console.error("Error details:", JSON.stringify(error, null, 2));
+      } else {
+        console.log("✅ User inserted successfully:", data);
+      }
+    }
+  } catch (error) {
+    console.error("❌ Exception saving user:", error);
+  }
+};
+
   /* ===============================
      CONFIGURAR DEEP LINKING
   =============================== */
   useEffect(() => {
     const handleDeepLink = async (event) => {
-      const url = event.url;    
+      const url = event.url;
 
       // Verificar si es un callback de OAuth
-      if (url && (url.includes("#access_token=") || url.includes("?access_token="))) {
+      if (
+        url &&
+        (url.includes("#access_token=") || url.includes("?access_token="))
+      ) {
         try {
           setIsGoogleLoading(true);
-          
+
           // Extraer los parámetros del URL
-          const params = parseUrlParams(url);        
-          
+          const params = parseUrlParams(url);
+
           if (params.access_token && params.refresh_token) {
             const { data, error } = await supabase.auth.setSession({
               access_token: params.access_token,
               refresh_token: params.refresh_token,
             });
 
-            if (error) throw error;           
+            if (error) throw error;
+
+            console.log("✅ Session set via deep link");
 
             const userName =
               data.user?.user_metadata?.full_name ||
@@ -70,14 +148,21 @@ const LoginScreen = () => {
               topOffset: 60,
             });
 
+            // Guardar usuario en la base de datos (sin await para no bloquear)
+            if (data.user) {
+              saveUserToDatabase(data.user).catch(err => 
+                console.error("Error in saveUserToDatabase:", err)
+              );
+            }
+
             setTimeout(() => {
               setIsGoogleLoading(false);
               navigation.replace("Home");
             }, 1000);
           }
-        } catch (error) {          
+        } catch (error) {
           setIsGoogleLoading(false);
-          
+
           Toast.show({
             type: "error",
             text1: "Login failed",
@@ -94,7 +179,7 @@ const LoginScreen = () => {
 
     // Verificar si la app se abrió con un deep link
     Linking.getInitialURL().then((url) => {
-      if (url) {       
+      if (url) {
         handleDeepLink({ url });
       }
     });
@@ -109,10 +194,10 @@ const LoginScreen = () => {
   =============================== */
   const parseUrlParams = (url) => {
     const params = {};
-    
+
     // Manejar tanto hash (#) como query (?)
     let paramString = "";
-    
+
     if (url.includes("#")) {
       paramString = url.split("#")[1];
     } else if (url.includes("?")) {
@@ -139,8 +224,9 @@ const LoginScreen = () => {
 
     // Escuchar cambios de autenticación
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {       
-
+      async (event, session) => {
+        console.log("🔔 Auth event:", event);
+        
         if (event === "SIGNED_IN" && session) {
           const userName =
             session.user.user_metadata?.full_name ||
@@ -155,6 +241,11 @@ const LoginScreen = () => {
             visibilityTime: 3000,
             topOffset: 60,
           });
+
+          // Guardar usuario en la base de datos (sin await para no bloquear)
+          saveUserToDatabase(session.user).catch(err => 
+            console.error("Error in saveUserToDatabase:", err)
+          );
 
           setTimeout(() => navigation.replace("Home"), 1000);
         } else if (event === "SIGNED_OUT") {
@@ -178,12 +269,14 @@ const LoginScreen = () => {
         error,
       } = await supabase.auth.getSession();
 
-      if (error) {       
+      if (error) {
+        console.error("Error getting session:", error);
         setIsCheckingSession(false);
         return;
       }
 
-      if (session) {        
+      if (session) {
+        console.log("✅ Existing session found");
 
         const userName =
           session.user.user_metadata?.full_name ||
@@ -199,11 +292,17 @@ const LoginScreen = () => {
           topOffset: 60,
         });
 
+        // Guardar usuario en la base de datos (sin await para no bloquear)
+        saveUserToDatabase(session.user).catch(err => 
+          console.error("Error in saveUserToDatabase:", err)
+        );
+
         setTimeout(() => navigation.replace("Home"), 800);
       } else {
         setIsCheckingSession(false);
       }
-    } catch (err) {      
+    } catch (err) {
+      console.error("Exception in checkExistingSession:", err);
       setIsCheckingSession(false);
     }
   };
@@ -216,7 +315,7 @@ const LoginScreen = () => {
       setIsGoogleLoading(true);
 
       // Crear el redirect URL usando tu scheme personalizado
-      const redirectUrl = "farmlanddeli://";    
+      const redirectUrl = "farmlanddeli://";
 
       // Iniciar el flujo OAuth con Google
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -227,7 +326,7 @@ const LoginScreen = () => {
         },
       });
 
-      if (error) throw error;     
+      if (error) throw error;
 
       // Abrir el navegador para OAuth
       if (data?.url) {
@@ -237,22 +336,27 @@ const LoginScreen = () => {
           {
             showInRecents: true,
           }
-        );      
+        );
 
         // Si el resultado trae URL, procesarla directamente
-        if (result.type === "success" && result.url) {         
-          
+        if (result.type === "success" && result.url) {
           // Procesar el URL manualmente si contiene tokens
-          if (result.url.includes("#access_token=") || result.url.includes("?access_token=")) {
-            const params = parseUrlParams(result.url);           
-            
+          if (
+            result.url.includes("#access_token=") ||
+            result.url.includes("?access_token=")
+          ) {
+            const params = parseUrlParams(result.url);
+
             if (params.access_token && params.refresh_token) {
-              const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-                access_token: params.access_token,
-                refresh_token: params.refresh_token,
-              });
+              const { data: sessionData, error: sessionError } =
+                await supabase.auth.setSession({
+                  access_token: params.access_token,
+                  refresh_token: params.refresh_token,
+                });
 
               if (sessionError) throw sessionError;
+
+              console.log("✅ Session set successfully");
 
               const userName =
                 sessionData.user?.user_metadata?.full_name ||
@@ -267,6 +371,13 @@ const LoginScreen = () => {
                 visibilityTime: 3000,
                 topOffset: 60,
               });
+
+              // Guardar usuario en la base de datos (sin await para no bloquear)
+              if (sessionData.user) {
+                saveUserToDatabase(sessionData.user).catch(err => 
+                  console.error("Error in saveUserToDatabase:", err)
+                );
+              }
 
               setTimeout(() => {
                 setIsGoogleLoading(false);
@@ -294,9 +405,9 @@ const LoginScreen = () => {
           });
         }
       }
-    } catch (error) {     
+    } catch (error) {
       setIsGoogleLoading(false);
-      
+
       Toast.show({
         type: "error",
         text1: "Google Sign-In failed",
@@ -330,7 +441,16 @@ const LoginScreen = () => {
         password,
       });
 
-      if (error) throw error;     
+      if (error) throw error;
+
+      console.log("✅ Login successful");
+
+      // Guardar usuario en la base de datos (sin await para no bloquear)
+      if (data.user) {
+        saveUserToDatabase(data.user).catch(err => 
+          console.error("Error in saveUserToDatabase:", err)
+        );
+      }
     } catch (err) {
       let errorMessage = err.message;
 

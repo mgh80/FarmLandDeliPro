@@ -1,19 +1,17 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-const Stack = createNativeStackNavigator();
-import { View, Text } from "react-native";
-import React from "react";
-import HomeScreen from "./screens/HomeScreen";
-import RegisterScreen from "./screens/RegisterScreen";
-import Products from "./screens/Products";
-import LoginScreen from "./screens/LoginScreen";
+import AuthorizePaymentScreen from "./screens/AuthorizePaymentScreen";
 import CartScreen from "./screens/CartScreen";
+import CouponHistoryScreen from "./screens/CouponHistoryScreen";
+import HomeScreen from "./screens/HomeScreen";
+import LoginScreen from "./screens/LoginScreen";
+import MyPointsScreen from "./screens/MyPointsScreen";
 import OrderConfirmationScreen from "./screens/OrderConfirmationScreen";
 import OrderHistoryScreen from "./screens/OrderHistoryScreen";
-import MyPointsScreen from "./screens/MyPointsScreen";
-import CouponHistoryScreen from "./screens/CouponHistoryScreen";
+import Products from "./screens/Products";
+import RegisterScreen from "./screens/RegisterScreen";
 import TermsScreen from "./screens/TermsScreen";
-import AuthorizePaymentScreen from "./screens/AuthorizePaymentScreen";
+const Stack = createNativeStackNavigator();
 
 const linking = {
   prefixes: ["http://localhost:8081"],
@@ -52,7 +50,7 @@ export default function Navigation() {
           component={OrderHistoryScreen}
         ></Stack.Screen>
         <Stack.Screen
-          name="OrderConfirmation"
+          name="OrderConfirmationScreen"
           component={OrderConfirmationScreen}
         ></Stack.Screen>
         <Stack.Screen
