@@ -9,7 +9,7 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View
+  View,
 } from "react-native";
 import * as Icon from "react-native-feather";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -34,25 +34,17 @@ export default function HomeScreen() {
   const [isGuest, setIsGuest] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Ref para el ScrollView
   const scrollViewRef = useRef(null);
 
   const products = useProducts();
   const categories = useCategories();
 
-  /* ===============================
-     REFRESH DATA
-  =============================== */
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    
+
     try {
-      // Aquí puedes recargar los datos si usas estados locales
-      // Si usas hooks como useProducts(), estos deberían tener su propia lógica de recarga
-      
-      // Recargar nombre de usuario
       await fetchUserName();
-      
+
       Toast.show({
         type: "success",
         text1: "Refreshed! 🔄",
@@ -80,9 +72,6 @@ export default function HomeScreen() {
     navigation.replace("Login");
   };
 
-  /* ===============================
-     DELETE ACCOUNT
-  =============================== */
   const handleDeleteAccount = () => {
     Alert.alert(
       "Delete Account",
@@ -97,7 +86,7 @@ export default function HomeScreen() {
           style: "destructive",
           onPress: confirmDeleteAccount,
         },
-      ]
+      ],
     );
   };
 
@@ -120,15 +109,15 @@ export default function HomeScreen() {
 
       const { error: updateError } = await supabase
         .from("Users")
-        .update({ 
-          deleted: true, 
-          deleted_at: new Date().toISOString() 
+        .update({
+          deleted: true,
+          deleted_at: new Date().toISOString(),
         })
         .eq("id", user.id);
 
       if (updateError) {
         console.error("Error marking user as deleted:", updateError);
-        
+
         const { error: deleteError } = await supabase
           .from("Users")
           .delete()
@@ -136,7 +125,7 @@ export default function HomeScreen() {
 
         if (deleteError) {
           console.error("Error deleting user:", deleteError);
-          
+
           if (deleteError.code === "23503") {
             Toast.show({
               type: "error",
@@ -206,19 +195,14 @@ export default function HomeScreen() {
     fetchUserName();
   }, []);
 
-  /* ===============================
-     FIX: Navegación al carrito
-  =============================== */
   const handleCartPress = useCallback(() => {
     navigation.navigate("Cart");
   }, [navigation]);
 
   const handleHomePress = useCallback(() => {
-    // Resetear búsqueda y categoría activa
     setSearchText("");
     setActiveCategory(null);
-    
-    // Scroll al inicio del ScrollView
+
     scrollViewRef.current?.scrollTo({
       y: 0,
       animated: true,
@@ -231,7 +215,6 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={{ backgroundColor: "white", flex: 1 }}>
-      {/* Saludo superior */}
       <View
         style={{
           flexDirection: "row",
@@ -253,7 +236,6 @@ export default function HomeScreen() {
         </Text>
       </View>
 
-      {/* Buscador */}
       <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
         <View
           style={{
@@ -290,7 +272,6 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Contenido con Pull-to-Refresh */}
       <ScrollView
         ref={scrollViewRef}
         style={{ marginTop: 10 }}
@@ -299,7 +280,7 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#4a90e2']}
+            colors={["#4a90e2"]}
             tintColor="#4a90e2"
             title="Pull to refresh"
             titleColor="#999"
@@ -313,11 +294,11 @@ export default function HomeScreen() {
         <Carousel />
         {categories.map((cat) => {
           const productsInCategory = products.filter(
-            (p) => p.CategoryId === cat.Id
+            (p) => p.CategoryId === cat.Id,
           );
           if (activeCategory && cat.Name !== activeCategory) return null;
           const filteredProducts = productsInCategory.filter((p) =>
-            p.Name.toLowerCase().includes(searchText.toLowerCase())
+            p.Name.toLowerCase().includes(searchText.toLowerCase()),
           );
           if (filteredProducts.length === 0) return null;
           return (
@@ -332,7 +313,6 @@ export default function HomeScreen() {
         <RewardsSection />
       </ScrollView>
 
-      {/* Barra inferior - FIX: Simplificado sin onPressIn/onPressOut */}
       <View
         style={{
           flexDirection: "row",
@@ -344,17 +324,12 @@ export default function HomeScreen() {
           backgroundColor: "#fff",
         }}
       >
-        {/* HOME */}
         <TouchableOpacity
           onPress={handleHomePress}
           activeOpacity={0.7}
           style={{ alignItems: "center" }}
         >
-          <Icon.Home
-            width={26}
-            height={26}
-            stroke="#1F2937"
-          />
+          <Icon.Home width={26} height={26} stroke="#1F2937" />
           <Text
             style={{
               fontSize: 10,
@@ -367,17 +342,12 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* CART - FIX: TouchableOpacity en lugar de Pressable */}
         <TouchableOpacity
           onPress={handleCartPress}
           activeOpacity={0.7}
           style={{ position: "relative", alignItems: "center" }}
         >
-          <Icon.ShoppingCart
-            width={26}
-            height={26}
-            stroke="#6B7280"
-          />
+          <Icon.ShoppingCart width={26} height={26} stroke="#6B7280" />
           {getTotalItems() > 0 && (
             <View
               style={{
@@ -412,17 +382,12 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* PROFILE */}
         <TouchableOpacity
           onPress={handleProfilePress}
           activeOpacity={0.7}
           style={{ alignItems: "center" }}
         >
-          <Icon.User
-            width={24}
-            height={24}
-            stroke="#6B7280"
-          />
+          <Icon.User width={24} height={24} stroke="#6B7280" />
           <Text
             style={{
               fontSize: 10,
@@ -436,7 +401,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Sidebar */}
       <Modal
         visible={showSidebar}
         transparent
@@ -450,12 +414,10 @@ export default function HomeScreen() {
             flexDirection: "row",
           }}
         >
-          {/* Zona clickeable para cerrar */}
           <TouchableWithoutFeedback onPress={() => setShowSidebar(false)}>
             <View style={{ flex: 1 }} />
           </TouchableWithoutFeedback>
 
-          {/* PANEL */}
           <View
             style={{
               width: "78%",
@@ -472,7 +434,6 @@ export default function HomeScreen() {
               elevation: 8,
             }}
           >
-            {/* Header */}
             <Text style={{ fontSize: 26, fontWeight: "bold", marginBottom: 4 }}>
               Profile
             </Text>
@@ -487,9 +448,20 @@ export default function HomeScreen() {
               {userName}
             </Text>
 
-            {/* Opciones - Solo mostrar si NO es invitado */}
             {!isGuest && (
               <>
+                {/* NUEVO: Edit Profile */}
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setShowSidebar(false);
+                    navigation.navigate("EditProfile");
+                  }}
+                >
+                  <Icon.Edit width={22} height={22} stroke="#1F2937" />
+                  <Text style={styles.menuText}>Edit Profile</Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity
                   style={styles.menuItem}
                   onPress={() => {
@@ -536,7 +508,6 @@ export default function HomeScreen() {
               <Text style={styles.menuText}>Terms of use</Text>
             </TouchableOpacity>
 
-            {/* Delete Account - Solo si NO es invitado */}
             {!isGuest && (
               <TouchableOpacity
                 style={styles.menuItem}
@@ -552,7 +523,6 @@ export default function HomeScreen() {
               </TouchableOpacity>
             )}
 
-            {/* Logout o Login */}
             {isGuest ? (
               <TouchableOpacity
                 onPress={() => {
@@ -598,7 +568,6 @@ export default function HomeScreen() {
               </TouchableOpacity>
             )}
 
-            {/* Cerrar */}
             <TouchableOpacity
               onPress={() => setShowSidebar(false)}
               style={{ marginTop: 20 }}

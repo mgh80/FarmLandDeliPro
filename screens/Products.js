@@ -22,7 +22,6 @@ export default function Products() {
   const { addToCart } = useCart();
   let item = params;
 
-
   const [quantity, setQuantity] = useState(1);
   const [ingredients, setIngredients] = useState([]);
   const [selectedIngredients, setSelectedIngredients] = useState({});
@@ -40,9 +39,9 @@ export default function Products() {
   const isComboAvailable = () => {
     if (productCategoryId === null) return false;
 
-    const numCategoryId = Number(productCategoryId);   
+    const numCategoryId = Number(productCategoryId);
 
-    const isAvailable = numCategoryId === 6 || numCategoryId === 16;    
+    const isAvailable = numCategoryId === 6 || numCategoryId === 16;
 
     return isAvailable; // Solo Hot Sandwich (6) y Quesadillas (16)
   };
@@ -70,7 +69,7 @@ export default function Products() {
         .single();
 
       if (!productError && productData) {
-        setProductCategoryId(productData.CategoryId);       
+        setProductCategoryId(productData.CategoryId);
       }
     };
 
@@ -154,7 +153,7 @@ export default function Products() {
             text: "Login",
             onPress: () => navigation.navigate("Login"),
           },
-        ]
+        ],
       );
       return;
     }
@@ -187,7 +186,7 @@ export default function Products() {
         description: item.description,
         extras, // ahora es un array de objetos {ingredient_id} o {product_id}
       },
-      quantity
+      quantity,
     );
 
     navigation.navigate("Home");

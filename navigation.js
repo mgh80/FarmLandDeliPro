@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AuthorizePaymentScreen from "./screens/AuthorizePaymentScreen";
 import CartScreen from "./screens/CartScreen";
 import CouponHistoryScreen from "./screens/CouponHistoryScreen";
+import EditProfileScreen from "./screens/EditProfileScreen";
 import HomeScreen from "./screens/HomeScreen";
 import LoginScreen from "./screens/LoginScreen";
 import MyPointsScreen from "./screens/MyPointsScreen";
@@ -41,6 +42,10 @@ export default function Navigation() {
         <Stack.Screen name="Cart" component={CartScreen}></Stack.Screen>
         <Stack.Screen name="Points" component={MyPointsScreen}></Stack.Screen>
         <Stack.Screen name="Terms" component={TermsScreen}></Stack.Screen>
+        <Stack.Screen
+          name="EditProfile"
+          component={EditProfileScreen}
+        ></Stack.Screen>
         <Stack.Screen
           name="AuthorizePaymentScreen"
           component={AuthorizePaymentScreen}
