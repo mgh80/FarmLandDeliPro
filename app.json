@@ -2,12 +2,12 @@
   "expo": {
     "name": "Farmland Deli",
     "slug": "farmlanddeliapp",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "scheme": "farmlanddeli",
     "icon": "./assets/icon.png",
     "android": {
       "package": "com.farmlanddeli.mobile",
-      "versionCode": 7,
+      "versionCode": 8,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFFFFF"
@@ -22,10 +22,7 @@
               "host": "*"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
     },
