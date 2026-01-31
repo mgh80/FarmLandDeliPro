@@ -9,7 +9,7 @@
       "package": "com.farmlanddeli.mobile",
       "versionCode": 8,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/images/adaptative.png",
         "backgroundColor": "#FFFFFF"
       },
       "intentFilters": [
