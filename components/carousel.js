@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { Image } from "expo-image";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
   FlatList,
-  Image,
   Modal,
   StyleSheet,
   Text,
@@ -20,6 +20,7 @@ export default function Carousel() {
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [imageLoadingStates, setImageLoadingStates] = useState({});
   const flatListRef = useRef(null);
 
   useEffect(() => {
@@ -29,9 +30,16 @@ export default function Carousel() {
         .select("*")
         .eq("active", true);
 
-      if (error) {       
+      if (error) {
+        console.error("Error fetching promotions:", error);
       } else {
         setBanners(data);
+        // Inicializar estados de carga
+        const loadingStates = {};
+        data.forEach((banner) => {
+          loadingStates[banner.id] = true;
+        });
+        setImageLoadingStates(loadingStates);
       }
       setLoading(false);
     };
@@ -49,10 +57,55 @@ export default function Carousel() {
         animated: true,
       });
       setActiveIndex(nextIndex);
-    }, 5000); // 5 segundos
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [activeIndex, banners]);
+
+  const handleImageLoad = useCallback((bannerId) => {
+    setImageLoadingStates((prev) => ({ ...prev, [bannerId]: false }));
+  }, []);
+
+  const keyExtractor = useCallback((item) => item.id.toString(), []);
+
+  const getItemLayout = useCallback(
+    (data, index) => ({
+      length: width,
+      offset: width * index,
+      index,
+    }),
+    [],
+  );
+
+  const renderBanner = useCallback(
+    ({ item }) => (
+      <TouchableOpacity
+        onPress={() => setSelectedImage(item.image_url)}
+        activeOpacity={0.9}
+      >
+        <View style={styles.imageContainer}>
+          {/* Loading indicator */}
+          {imageLoadingStates[item.id] && (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#4a90e2" />
+            </View>
+          )}
+
+          <Image
+            source={{ uri: item.image_url }}
+            style={styles.image}
+            contentFit="cover"
+            transition={300}
+            cachePolicy="memory-disk"
+            priority="high"
+            onLoad={() => handleImageLoad(item.id)}
+            onError={() => handleImageLoad(item.id)}
+          />
+        </View>
+      </TouchableOpacity>
+    ),
+    [imageLoadingStates, handleImageLoad],
+  );
 
   if (loading) {
     return (
@@ -66,7 +119,6 @@ export default function Carousel() {
 
   return (
     <View style={styles.container}>
-      {/* 🔵 Título Offers */}
       <Text style={styles.title}>Offers</Text>
 
       <FlatList
@@ -75,28 +127,19 @@ export default function Carousel() {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={keyExtractor}
+        renderItem={renderBanner}
         extraData={activeIndex}
-        getItemLayout={(_, index) => ({
-          length: width,
-          offset: width * index,
-          index,
-        })}
+        getItemLayout={getItemLayout}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={2}
+        windowSize={3}
+        initialNumToRender={1}
         onMomentumScrollEnd={(e) => {
           const index = Math.round(e.nativeEvent.contentOffset.x / width);
           setActiveIndex(index);
         }}
-        renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => setSelectedImage(item.image_url)}>
-            <View style={styles.imageContainer}>
-              <Image
-                source={{ uri: item.image_url }}
-                style={styles.image}
-                resizeMode="cover"
-              />
-            </View>
-          </TouchableOpacity>
-        )}
+        decelerationRate="fast"
       />
 
       {/* Dots indicadores */}
@@ -109,14 +152,15 @@ export default function Carousel() {
         ))}
       </View>
 
-      {/* 🔍 Modal de imagen ampliada */}
+      {/* Modal de imagen ampliada */}
       <Modal visible={!!selectedImage} transparent animationType="fade">
         <TouchableWithoutFeedback onPress={() => setSelectedImage(null)}>
           <View style={styles.modalContainer}>
             <Image
               source={{ uri: selectedImage }}
               style={styles.fullscreenImage}
-              resizeMode="contain"
+              contentFit="contain"
+              cachePolicy="memory-disk"
             />
           </View>
         </TouchableWithoutFeedback>
@@ -142,12 +186,24 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     alignItems: "center",
     justifyContent: "center",
+    height: 180,
   },
   imageContainer: {
     width: width,
     height: 180,
     justifyContent: "center",
     alignItems: "center",
+  },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f3f4f6",
+    zIndex: 1,
   },
   image: {
     width: "94%",

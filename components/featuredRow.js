@@ -1,16 +1,32 @@
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { useCallback } from "react";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 import ProductCard from "./productCard";
 
 export default function FeaturedRow({ title, description, products = [] }) {
-  // Renderizar cada producto
-  const renderProduct = ({ item }) => (
-    <ProductCard item={item} />
+  // Memoized render function para mejor performance
+  const renderProduct = useCallback(
+    ({ item }) => <ProductCard item={item} />,
+    [],
   );
+
+  // Extractor de key optimizado
+  const keyExtractor = useCallback(
+    (item, index) =>
+      item.id?.toString() || item.Id?.toString() || `product-${index}`,
+    [],
+  );
+
+  // Función que determina qué items están cerca del viewport
+  const getItemLayout = useCallback(
+    (data, index) => ({
+      length: 284, // 260 (width) + 24 (marginRight)
+      offset: 284 * index,
+      index,
+    }),
+    [],
+  );
+
+  if (!products || products.length === 0) return null;
 
   return (
     <View style={styles.container}>
@@ -22,18 +38,28 @@ export default function FeaturedRow({ title, description, products = [] }) {
         </View>
       </View>
 
-      {/* Scroll horizontal - FIX: Cambio de ScrollView a FlatList */}
+      {/* FlatList optimizado */}
       <FlatList
         horizontal
         data={products}
         renderItem={renderProduct}
-        keyExtractor={(item, index) => item.id?.toString() || item.Id?.toString() || `product-${index}`}
+        keyExtractor={keyExtractor}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 15 }}
+        // Optimizaciones críticas
         removeClippedSubviews={true}
-        maxToRenderPerBatch={5}
+        maxToRenderPerBatch={3}
         windowSize={5}
-        initialNumToRender={3}
+        initialNumToRender={2}
+        updateCellsBatchingPeriod={50}
+        // Mejora significativa de performance
+        getItemLayout={getItemLayout}
+        // Evita re-renders innecesarios
+        extraData={products.length}
+        // Mejora el scroll en Android
+        decelerationRate="fast"
+        // Reduce el overshoot en iOS
+        bounces={false}
       />
     </View>
   );
