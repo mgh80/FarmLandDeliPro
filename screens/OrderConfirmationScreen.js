@@ -32,28 +32,53 @@ export default function OrderConfirmationScreen() {
     };
   }, []);
 
-  // Traer puntos del usuario
+  // ✅ NUEVO: Sumar y traer los puntos del usuario en un solo paso
   useEffect(() => {
-    const fetchUserPoints = async () => {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (userError || !user) return;
+    const processAndFetchUserPoints = async () => {
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+        if (userError || !user) return;
 
-      const { data, error } = await supabase
-        .from("Users")
-        .select("points")
-        .eq("id", user.id)
-        .single();
+        // 1. Obtener los puntos que tiene el usuario actualmente
+        const { data: userData, error: fetchError } = await supabase
+          .from("Users")
+          .select("points")
+          .eq("id", user.id)
+          .single();
 
-      if (!error && data?.points !== undefined) {
-        setTotalPoints(data.points);
+        if (fetchError) throw fetchError;
+
+        let currentPoints = userData?.points || 0;
+
+        // 2. Si hay puntos ganados en esta orden, sumarlos a la base de datos
+        if (params?.points && params.points > 0) {
+          const earnedPoints = Math.floor(params.points);
+          const newTotal = currentPoints + earnedPoints;
+
+          const { error: updateError } = await supabase
+            .from("Users")
+            .update({ points: newTotal })
+            .eq("id", user.id);
+
+          if (!updateError) {
+            currentPoints = newTotal; // Actualizamos para la vista
+          } else {
+            console.error("Error sumando puntos:", updateError);
+          }
+        }
+
+        // 3. Mostrar el total en pantalla
+        setTotalPoints(currentPoints);
+      } catch (err) {
+        console.error("Error en el proceso de puntos:", err);
       }
     };
 
-    fetchUserPoints();
-  }, []);
+    processAndFetchUserPoints();
+  }, [params?.points]);
 
   // Temporizador original (15 minutos)
   useEffect(() => {
@@ -101,13 +126,10 @@ export default function OrderConfirmationScreen() {
         .single();
 
       if (!error && data) {
-        // Verificar si está cancelada
         if (data.cancelstatus === true) {
           setIsCanceled(true);
           setTimeLeft(0);
-        }
-        // Verificar si está lista
-        else if (data.orderstatus === true) {
+        } else if (data.orderstatus === true) {
           setIsReady(true);
           setTimeLeft(0);
         } else {
@@ -131,16 +153,12 @@ export default function OrderConfirmationScreen() {
     return `${min}:${sec}`;
   };
 
-  // Función para cancelar la orden
   const handleCancelOrder = () => {
     Alert.alert(
       "Cancel Order",
       "Are you sure you want to cancel this order? This action cannot be undone.",
       [
-        {
-          text: "No, keep order",
-          style: "cancel",
-        },
+        { text: "No, keep order", style: "cancel" },
         {
           text: "Yes, cancel",
           style: "destructive",
@@ -154,27 +172,23 @@ export default function OrderConfirmationScreen() {
     try {
       setCancelingOrder(true);
 
-      // Actualizar la orden en Supabase
       const { error: updateError } = await supabase
         .from("Orders")
         .update({ cancelstatus: true })
         .eq("ordernumber", params?.orderNumber);
 
       if (updateError) {
-        console.error("Error canceling order:", updateError);
         Alert.alert("Error", "Failed to cancel order. Please try again.");
         setCancelingOrder(false);
         return;
       }
 
-      // Restar los puntos que se habían sumado (si los hay)
+      // Restar los puntos que se habían sumado
       if (params?.points && params?.points > 0) {
         const {
           data: { user },
         } = await supabase.auth.getUser();
-
         if (user) {
-          // Obtener puntos actuales
           const { data: userData } = await supabase
             .from("Users")
             .select("points")
@@ -183,13 +197,10 @@ export default function OrderConfirmationScreen() {
 
           if (userData) {
             const newPoints = Math.max(0, userData.points - params.points);
-
-            // Actualizar puntos
             await supabase
               .from("Users")
               .update({ points: newPoints })
               .eq("id", user.id);
-
             setTotalPoints(newPoints);
           }
         }
@@ -202,21 +213,14 @@ export default function OrderConfirmationScreen() {
       Alert.alert(
         "Order Canceled",
         "Your order has been canceled successfully.",
-        [
-          {
-            text: "OK",
-            onPress: handleGoHome,
-          },
-        ],
+        [{ text: "OK", onPress: handleGoHome }],
       );
     } catch (error) {
-      console.error("Unexpected error canceling order:", error);
       Alert.alert("Error", "Something went wrong. Please try again.");
       setCancelingOrder(false);
     }
   };
 
-  // Al pulsar el botón limpiar y navegar
   const handleGoHome = async () => {
     await AsyncStorage.removeItem(TIMER_KEY);
     await AsyncStorage.removeItem(ORDER_INFO_KEY);
@@ -320,9 +324,7 @@ export default function OrderConfirmationScreen() {
         </>
       )}
 
-      {/* Botones */}
       <View style={{ marginTop: 30, width: "100%" }}>
-        {/* Botón de cancelar orden - Solo mostrar si NO está lista y NO está cancelada */}
         {!isReady && !isCanceled && (
           <TouchableOpacity
             onPress={handleCancelOrder}
@@ -350,15 +352,9 @@ export default function OrderConfirmationScreen() {
             )}
           </TouchableOpacity>
         )}
-
-        {/* Botón de ir a home */}
         <TouchableOpacity
           onPress={handleGoHome}
-          style={{
-            backgroundColor: "#FFA500",
-            padding: 15,
-            borderRadius: 10,
-          }}
+          style={{ backgroundColor: "#FFA500", padding: 15, borderRadius: 10 }}
         >
           <Text
             style={{ color: "white", fontWeight: "bold", textAlign: "center" }}

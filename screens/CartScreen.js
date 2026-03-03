@@ -51,7 +51,7 @@ export default function CartScreen({ navigation }) {
     if (!userId) {
       Alert.alert(
         "Login required",
-        "You must log in to complete your purchase."
+        "You must log in to complete your purchase.",
       );
       return;
     }
@@ -67,7 +67,7 @@ export default function CartScreen({ navigation }) {
                 onPress: () => resolve(false),
               },
               { text: "Confirm", onPress: () => resolve(true) },
-            ])
+            ]),
           );
 
     if (!confirmed) return;
@@ -87,25 +87,28 @@ export default function CartScreen({ navigation }) {
   }, [isProcessing, userId, cartItems, navigation, getTotalWithTax]);
 
   // FIX: Funciones memoizadas para mejor rendimiento
-  const handleRemoveItem = useCallback((itemId) => {
-    Alert.alert(
-      "Remove Item",
-      "Are you sure you want to remove this item from your cart?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () => {
-            removeFromCart(itemId);
+  const handleRemoveItem = useCallback(
+    (itemId) => {
+      Alert.alert(
+        "Remove Item",
+        "Are you sure you want to remove this item from your cart?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
           },
-        },
-      ]
-    );
-  }, [removeFromCart]);
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: () => {
+              removeFromCart(itemId);
+            },
+          },
+        ],
+      );
+    },
+    [removeFromCart],
+  );
 
   // FIX: Componente separado para cada item del carrito
   const CartItem = ({ item }) => (
@@ -129,9 +132,7 @@ export default function CartScreen({ navigation }) {
         style={{ width: 60, height: 60, borderRadius: 10 }}
       />
       <View style={{ flex: 1, marginLeft: 10 }}>
-        <Text style={{ fontWeight: "bold", fontSize: 16 }}>
-          {item.name}
-        </Text>
+        <Text style={{ fontWeight: "bold", fontSize: 16 }}>{item.name}</Text>
 
         {/* Controles de cantidad - OPTIMIZADO */}
         <View
@@ -256,7 +257,7 @@ export default function CartScreen({ navigation }) {
             keyExtractor={(item) => item.id?.toString() || item.name}
             renderItem={({ item }) => <CartItem item={item} />}
             contentContainerStyle={{ paddingBottom: 120 }}
-            removeClippedSubviews={Platform.OS === 'android'}
+            removeClippedSubviews={Platform.OS === "android"}
             maxToRenderPerBatch={5}
             updateCellsBatchingPeriod={30}
             windowSize={5}

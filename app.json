@@ -2,7 +2,7 @@
   "expo": {
     "name": "Farmland Deli",
     "slug": "farmlanddeliapp",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "scheme": "farmlanddeli",
     "icon": "./assets/icon.png",
     "android": {
