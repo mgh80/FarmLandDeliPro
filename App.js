@@ -1,10 +1,10 @@
+import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, View } from "react-native";
-import Navigation from "./navigation";
+import { useEffect, useRef, useState } from "react";
+import { View } from "react-native";
 import Toast from "react-native-toast-message";
 import { CartProvider } from "./context/CartContext";
-import * as Notifications from "expo-notifications";
-import { useEffect, useRef, useState } from "react";
+import Navigation from "./navigation";
 import SplashScreen from "./screens/SplashScreen"; // 👈 Asegúrate que esta ruta sea correcta
 
 Notifications.setNotificationHandler({
@@ -22,9 +22,7 @@ export default function App() {
   useEffect(() => {
     // Listener de notificaciones
     notificationListener.current =
-      Notifications.addNotificationReceivedListener((notification) => {
-        console.log("🔔 Notificación recibida:", notification);
-      });
+      Notifications.addNotificationReceivedListener((notification) => {});
 
     // Temporizador para ocultar splash
     const splashTimeout = setTimeout(() => {

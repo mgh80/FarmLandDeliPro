@@ -1,4 +1,5 @@
 import { useNavigation } from "@react-navigation/native";
+import { Image } from "expo-image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -194,6 +195,19 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchUserName();
   }, []);
+
+  useEffect(() => {
+    if (!products || products.length === 0) return;
+
+    const prefetchImages = async () => {
+      const urls = products
+        .filter((p) => p.Image)
+        .map((p) => ({ uri: p.Image }));
+      await Image.prefetch(urls);
+    };
+
+    prefetchImages();
+  }, [products]);
 
   const handleCartPress = useCallback(() => {
     navigation.navigate("Cart");

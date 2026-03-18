@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import * as Icon from "react-native-feather";
+import { getOptimizedImageUrl } from "../constants/imageUtils";
 import { supabase } from "../constants/supabase";
 import { useCart } from "../context/CartContext";
 import { themeColors } from "../theme";
@@ -197,7 +198,7 @@ export default function Products() {
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         <View className="relative">
           <Image
-            source={{ uri: item.image }}
+            source={{ uri: getOptimizedImageUrl(item.image, 800, 600) }}
             style={{ width: "100%", height: 280 }}
             resizeMode="cover"
           />

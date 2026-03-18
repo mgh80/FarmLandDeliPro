@@ -8,6 +8,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { getOptimizedImageUrl } from "../constants/imageUtils";
 
 export default function ProductCard({ item }) {
   const navigation = useNavigation();
@@ -72,7 +73,7 @@ export default function ProductCard({ item }) {
           <Image
             source={
               item.Image
-                ? { uri: item.Image }
+                ? { uri: getOptimizedImageUrl(item.Image, 400, 400) }
                 : require("../assets/images/placeholder.png")
             }
             style={{
